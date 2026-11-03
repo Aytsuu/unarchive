@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "stack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1",
+    "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop.ps1",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

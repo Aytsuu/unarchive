@@ -1,0 +1,31 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Combobox, ComboboxInput, ComboboxContent, ComboboxList, ComboboxItem, ComboboxEmpty } from "@/components/ui/combobox"
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu"
+import { DirectionProvider } from "@/components/ui/direction"
+import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer"
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty"
+import { Field, FieldLabel, FieldDescription, FieldError } from "@/components/ui/field"
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
+import { Item, ItemContent, ItemTitle, ItemDescription, ItemActions } from "@/components/ui/item"
+import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem } from "@/components/ui/menubar"
+import { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuTrigger, NavigationMenuContent, NavigationMenuLink } from "@/components/ui/navigation-menu"
+import { Sidebar, SidebarProvider, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar"
+import { Toaster, toast } from "@/components/ui/toast"
+
+export const moreExamples = [
+  { id: "combobox", title: "Combobox", description: "Search and select an option.", content: <Combobox items={["Apple", "Banana", "Pear"]}><ComboboxInput aria-label="Choose a fruit" placeholder="Choose a fruit" /><ComboboxContent><ComboboxEmpty>No fruit found.</ComboboxEmpty><ComboboxList>{(item: string) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}</ComboboxList></ComboboxContent></Combobox> },
+  { id: "context-menu", title: "Context menu", description: "Right-click or long-press to open.", content: <ContextMenu><ContextMenuTrigger className="grid h-28 w-full place-items-center rounded-xl border border-dashed text-sm text-muted-foreground">Open context menu</ContextMenuTrigger><ContextMenuContent><ContextMenuItem>Copy</ContextMenuItem><ContextMenuItem>Rename</ContextMenuItem><ContextMenuItem variant="destructive">Delete</ContextMenuItem></ContextMenuContent></ContextMenu> },
+  { id: "direction", title: "Direction", description: "Right-to-left component layout.", content: <DirectionProvider direction="rtl"><div dir="rtl" className="flex w-full items-center gap-3"><Button variant="outline">التالي</Button><span className="text-sm">معاينة الاتجاه من اليمين إلى اليسار</span></div></DirectionProvider> },
+  { id: "drawer", title: "Drawer", content: <Drawer><DrawerTrigger render={<Button variant="outline" />}>Open drawer</DrawerTrigger><DrawerContent><DrawerHeader><DrawerTitle>Preferences</DrawerTitle><DrawerDescription>Adjust your settings in this drawer.</DrawerDescription></DrawerHeader></DrawerContent></Drawer> },
+  { id: "empty", title: "Empty", content: <Empty className="border"><EmptyHeader><EmptyTitle>No projects yet</EmptyTitle><EmptyDescription>Create a project to get started.</EmptyDescription></EmptyHeader><EmptyContent><Button size="sm">Create project</Button></EmptyContent></Empty> },
+  { id: "field", title: "Field", content: <div className="grid w-full max-w-sm gap-4"><Field><FieldLabel htmlFor="gallery-field">Email</FieldLabel><Input id="gallery-field" type="email" placeholder="you@example.com" /><FieldDescription>Used for account notifications.</FieldDescription></Field><Field data-invalid><FieldLabel htmlFor="gallery-invalid">Password</FieldLabel><Input id="gallery-invalid" type="password" aria-invalid defaultValue="short" /><FieldError>Use at least eight characters.</FieldError></Field></div> },
+  { id: "hover-card", title: "Hover card", content: <HoverCard><HoverCardTrigger render={<Button variant="link" />}>@designteam</HoverCardTrigger><HoverCardContent><p className="font-medium">Design team</p><p className="mt-1 text-sm text-muted-foreground">Building thoughtful interfaces together.</p></HoverCardContent></HoverCard> },
+  { id: "item", title: "Item", content: <div className="grid w-full gap-2"><Item variant="outline"><ItemContent><ItemTitle>Design system</ItemTitle><ItemDescription>Updated just now</ItemDescription></ItemContent><ItemActions><Button size="sm" variant="outline">Open</Button></ItemActions></Item><Item variant="muted"><ItemContent><ItemTitle>Components</ItemTitle><ItemDescription>Ready to review</ItemDescription></ItemContent></Item></div> },
+  { id: "menubar", title: "Menubar", content: <Menubar><MenubarMenu><MenubarTrigger>File</MenubarTrigger><MenubarContent><MenubarItem>New file</MenubarItem><MenubarItem>Open</MenubarItem></MenubarContent></MenubarMenu><MenubarMenu><MenubarTrigger>Edit</MenubarTrigger><MenubarContent><MenubarItem>Undo</MenubarItem><MenubarItem>Redo</MenubarItem></MenubarContent></MenubarMenu></Menubar> },
+  { id: "navigation-menu", title: "Navigation menu", content: <NavigationMenu><NavigationMenuList><NavigationMenuItem><NavigationMenuTrigger>Explore</NavigationMenuTrigger><NavigationMenuContent><NavigationMenuLink href="#navigation-menu">Components</NavigationMenuLink><NavigationMenuLink href="#navigation-menu">Patterns</NavigationMenuLink></NavigationMenuContent></NavigationMenuItem></NavigationMenuList></NavigationMenu> },
+  { id: "sidebar", title: "Sidebar", description: "A contained navigation example.", content: <SidebarProvider className="min-h-0"><Sidebar collapsible="none" className="h-48 max-w-full overflow-hidden rounded-xl border"><SidebarHeader className="font-medium">Workspace</SidebarHeader><SidebarContent><SidebarMenu><SidebarMenuItem><SidebarMenuButton isActive>Overview</SidebarMenuButton></SidebarMenuItem><SidebarMenuItem><SidebarMenuButton>Projects</SidebarMenuButton></SidebarMenuItem><SidebarMenuItem><SidebarMenuButton>Settings</SidebarMenuButton></SidebarMenuItem></SidebarMenu></SidebarContent></Sidebar></SidebarProvider> },
+  { id: "toast", title: "Toast", description: "Temporary feedback message.", content: <Toaster><Button variant="outline" onClick={() => toast.add({ title: "Changes saved", description: "Your preferences have been updated.", type: "success" })}>Show toast</Button></Toaster> },
+]
