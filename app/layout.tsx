@@ -27,12 +27,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      suppressHydrationWarning
+      style={{ colorScheme: "light" }}
       className={cn("h-full", "antialiased", googleSans.variable, geistMono.variable, "font-sans")}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('gallery-theme');var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d)}catch(e){document.documentElement.classList.toggle('dark',matchMedia('(prefers-color-scheme: dark)').matches)}})()` }} />
-      </head>
       <body className="min-h-full flex flex-col"><TooltipProvider>{children}</TooltipProvider></body>
     </html>
   );

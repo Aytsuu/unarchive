@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
-import { ThemeToggle } from "@/components/gallery/theme-toggle"
 import { sections } from "@/components/gallery/examples"
 
 const groups: Record<string, string[]> = {
@@ -36,7 +35,6 @@ export function Gallery() {
             <span aria-hidden="true" className="grid size-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">✳</span>
             <span>UI Library <span className="hidden font-normal text-muted-foreground sm:inline">/ Component gallery</span></span>
           </a>
-          <ThemeToggle />
         </div>
       </header>
 
