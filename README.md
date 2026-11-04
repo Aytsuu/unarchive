@@ -32,7 +32,7 @@ without the recipient or code and the user can request another code. This local
 setup does not provide a durable retry queue.
 Resend requests have a three-minute per-email cooldown; verification codes
 expire after five minutes. Entering all six digits verifies the email and opens
-the final signup step before the dashboard.
+the final signup step before home.
 The current Better Auth MongoDB OTP flow has not been validated to serialize a
 verification racing a resend across multiple application processes. Do not rely
 on strict cross-process OTP rotation until that behavior is resolved and tested.
@@ -71,12 +71,25 @@ project's development server and MongoDB, or `npm run stop:docker` to
 also quit Docker Desktop. The MongoDB data volume is preserved. If another
 process occupies port 3000, stop it before starting the stack.
 
+For hot updates, open the app served by `npm run stack` or `npm run dev`.
+`npm run start` serves a production build and does not hot-reload changes. If
+the browser reports hydration mismatches containing `bis_skin_checked`,
+`bis_register`, or `asbplayer-token-container`, disable the extension adding
+those attributes on localhost or use a browser profile without extensions.
+
 To reset all local authentication data, stop the app while keeping MongoDB
 running, then run `npm run reset:auth` and type the displayed database name to
 confirm. This deletes every user, account, session, verification code, resend
 cooldown, and authentication rate limit in that database. It preserves indexes
 and other collections. The command only accepts a single local MongoDB host;
 environment variables already set in your shell take precedence over `.env.local`.
+
+Run `npm run init:projects` with local MongoDB running to create the `projects`
+collection and indexes. Existing collections and their validation rules are not
+changed. Project documents use the Better Auth user ID string as `ownerId` and
+store demo asset references rather than file contents. Creating the collection
+does not enable project publishing or file uploads. Resetting authentication
+does not delete projects and can leave their owner references without users.
 
 First, run the development server:
 

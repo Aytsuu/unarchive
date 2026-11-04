@@ -37,7 +37,7 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
         return
       }
       setPassword("")
-      router.push("/dashboard")
+      router.replace("/home")
       router.refresh()
     } catch {
       setError("Unable to sign in right now. Please try again.")
@@ -50,8 +50,13 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
     setError("")
     setPending(true)
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/dashboard", errorCallbackURL: "/login?oauth_error=1" })
-      if (result.error) setError("Google sign-in could not be started. Please try again.")
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/home", errorCallbackURL: "/login?oauth_error=1", disableRedirect: true })
+      const authorizationUrl = result.data?.url ? new URL(result.data.url) : null
+      if (result.error || authorizationUrl?.protocol !== "https:" || authorizationUrl.hostname !== "accounts.google.com") {
+        setError("Google sign-in could not be started. Please try again.")
+      } else {
+        window.location.replace(authorizationUrl.href)
+      }
     } catch {
       setError("Google sign-in could not be started. Please try again.")
     } finally {
@@ -64,7 +69,7 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
       setError("Your browser could not save verification details. Enable session storage and try again.")
       return
     }
-    router.push("/verify-email")
+    router.replace("/verify-email")
   }
 
   return (
@@ -80,8 +85,8 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
         </div>
         <form onSubmit={signIn}>
           <div className="space-y-[15px]">
-            <div className="space-y-2"><Label htmlFor="login-email">Email</Label><Input id="login-email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Enter text" className="bg-background text-sm" /></div>
-            <div className="space-y-2"><Label htmlFor="login-password">Password</Label><Input id="login-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter text" className="bg-background text-sm" /></div>
+            <div className="space-y-2"><Label htmlFor="login-email">Email</Label><Input id="login-email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Enter text" className="text-sm" /></div>
+            <div className="space-y-2"><Label htmlFor="login-password">Password</Label><Input id="login-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter text" className="text-sm" /></div>
           </div>
           {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
           {showVerification && <Button type="button" variant="link" className="mt-2 h-auto px-0" onClick={openVerification}>Resend verification code</Button>}
@@ -89,7 +94,7 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
         </form>
       </div>
       <p className="mt-[47px] text-center text-sm font-medium leading-[normal]">By continuing, you agree to our<br />Terms of Service and Privacy Policy.</p>
-      <p className="mt-[50px] text-sm font-medium">Need an account?{"  "}<Link href="/signup" className="focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Sign up</Link></p>
+      <p className="mt-[50px] text-sm font-medium">Need an account?{"  "}<Link href="/signup" replace className="focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Sign up</Link></p>
     </main>
   )
 }

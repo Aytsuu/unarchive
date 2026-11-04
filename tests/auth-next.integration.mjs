@@ -70,6 +70,18 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
       if (!ready) await delay(200)
     }
     assert.ok(ready, "local Next server must start")
+    const guestMe = await fetch(`${origin}/api/me`)
+    assert.equal(guestMe.status, 401)
+    const guestHome = await fetch(`${origin}/home`)
+    assert.equal(guestHome.status, 200)
+    assert.match(await guestHome.text(), /Guest/)
+    const guestPublish = await fetch(`${origin}/publish`, { redirect: "manual" })
+    if (guestPublish.status === 200) {
+      assert.match(await guestPublish.text(), /<meta[^>]*http-equiv="refresh"[^>]*url=\/login/)
+    } else {
+      assert.equal(guestPublish.status, 307)
+      assert.match(guestPublish.headers.get("location"), /\/login/)
+    }
     const post = (path, body) => fetch(`${origin}/api/auth${path}`, {
       method: "POST",
       headers: { origin, "content-type": "application/json" },
@@ -94,6 +106,18 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
     const session = await fetch(`${origin}/api/auth/get-session`, { headers: { cookie: sessionCookie.split(";")[0] } })
     assert.equal(session.status, 200)
     assert.equal((await session.json()).user.email, email)
+    const me = await fetch(`${origin}/api/me`, { headers: { cookie: sessionCookie.split(";")[0] } })
+    assert.equal(me.status, 200)
+    assert.equal((await me.json()).user.email, email)
+    const home = await fetch(`${origin}/home`, { headers: { cookie: sessionCookie.split(";")[0] } })
+    assert.equal(home.status, 200)
+    assert.match(await home.text(), /Publish/)
+    const publish = await fetch(`${origin}/publish`, { headers: { cookie: sessionCookie.split(";")[0] } })
+    assert.equal(publish.status, 200)
+    assert.match(await publish.text(), /Share Your Work/)
+    const profile = await fetch(`${origin}/profile`, { headers: { cookie: sessionCookie.split(";")[0] } })
+    assert.equal(profile.status, 200)
+    assert.match(await profile.text(), /Test User/)
     const onboarding = await fetch(`${origin}/get-to-know`, { headers: { cookie: sessionCookie.split(";")[0] }, redirect: "manual" })
     assert.equal(onboarding.status, 200)
     const html = await onboarding.text()
@@ -102,7 +126,16 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
     const cards = afterHeading.match(/aria-hidden="true">((?:<div\b[^>]*><\/div>)+)<\/div>/)?.[1]
     assert.ok(cards, "onboarding must render the empty cards")
     assert.equal((cards.match(/<div\b/g) ?? []).length, 5, "onboarding renders five empty cards")
-    assert.match(afterHeading, /<a\b[^>]*href="\/dashboard"[^>]*>Skip<\/a>/, "Skip opens the dashboard")
+    assert.match(afterHeading, /<a\b[^>]*href="\/home"[^>]*>Skip<\/a>/, "Skip opens home")
+    const signout = await fetch(`${origin}/api/auth/sign-out`, {
+      method: "POST",
+      headers: { origin, cookie: sessionCookie.split(";")[0], "content-type": "application/json" },
+      body: "{}",
+    })
+    assert.equal(signout.status, 200)
+    assert.ok(signout.headers.getSetCookie().some((cookie) => /session_token/i.test(cookie) && /max-age=0/i.test(cookie)))
+    const afterSignout = await fetch(`${origin}/api/me`, { headers: { cookie: sessionCookie.split(";")[0] } })
+    assert.equal(afterSignout.status, 401, "a signed-out session cookie must not authenticate")
   } finally {
     if (child && child.exitCode === null) {
       child.kill()

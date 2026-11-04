@@ -44,6 +44,7 @@ export default function VerifyEmailPage() {
   const email = useSyncExternalStore(subscribeToEmail, getVerificationEmail, getServerEmail)
   const [otp, setOtp] = useState("")
   const [pending, setPending] = useState(false)
+  const [verified, setVerified] = useState(false)
   const pendingRef = useRef(false)
   const [localDeadline, setLocalDeadline] = useState<{ email: string; until: number } | null>(null)
   const [error, setError] = useState("")
@@ -77,28 +78,31 @@ export default function VerifyEmailPage() {
     if (!/^\d{6}$/.test(code)) return
     pendingRef.current = true
     setPending(true)
+    let result
     try {
-      const result = await authClient.emailOtp.verifyEmail({ email, otp: code })
-      if (result.error) {
-        setError(result.error.status === 429 ? "Too many attempts. Please wait and try again." : "The code is invalid or expired. Request a new code and try again.")
-        setOtp("")
-        return
-      }
-      try {
-        sessionStorage.removeItem(`verification-resend-until:${email.toLowerCase()}`)
-        sessionStorage.removeItem(`verification-resend-version:${email.toLowerCase()}`)
-        sessionStorage.removeItem("verification-email")
-      } catch { /* Storage may be unavailable. */ }
-      setOtp("")
-      router.push("/get-to-know")
-      router.refresh()
+      result = await authClient.emailOtp.verifyEmail({ email, otp: code })
     } catch {
       setError("Unable to verify your email right now. Please try again.")
       setOtp("")
-    } finally {
       pendingRef.current = false
       setPending(false)
+      return
     }
+    if (result.error) {
+      setError(result.error.status === 429 ? "Too many attempts. Please wait and try again." : "The code is invalid or expired. Request a new code and try again.")
+      setOtp("")
+      pendingRef.current = false
+      setPending(false)
+      return
+    }
+    setVerified(true)
+    try {
+      sessionStorage.removeItem(`verification-resend-until:${email.toLowerCase()}`)
+      sessionStorage.removeItem(`verification-resend-version:${email.toLowerCase()}`)
+      sessionStorage.removeItem("verification-email")
+    } catch { /* Storage may be unavailable. */ }
+    router.replace("/get-to-know")
+    router.refresh()
   }
 
   async function resend() {
@@ -144,14 +148,16 @@ export default function VerifyEmailPage() {
       <div className="mx-auto flex w-full flex-col items-center">
         <Link href="/" className="text-xl font-medium leading-10 focus-visible:outline-2 focus-visible:outline-ring">Unarchive</Link>
         <Progress value={65} aria-label="Signup progress" className="mt-9 w-[220px] [&_[data-slot=progress-track]]:h-2" />
-        {email === undefined ? (
+        {verified ? (
+          <p className="mt-6 text-sm text-muted-foreground" role="status">Email verified. Continuing...</p>
+        ) : email === undefined ? (
           <p className="mt-6 text-sm text-muted-foreground" role="status">Loading verification details…</p>
         ) : email === null ? (
           <div className="mt-6 w-full max-w-[280px] space-y-4 text-center text-sm" role="status">
             <p>Your verification email is unavailable. Return to signup or login to continue.</p>
             <div className="flex justify-center gap-4">
-              <Link href="/signup" className="underline underline-offset-4">Sign up</Link>
-              <Link href="/login" className="underline underline-offset-4">Log in</Link>
+              <Link href="/signup" replace className="underline underline-offset-4">Sign up</Link>
+              <Link href="/login" replace className="underline underline-offset-4">Log in</Link>
             </div>
           </div>
         ) : <div className="mt-6 flex w-full max-w-[280px] flex-col items-center" aria-busy={pending}>
@@ -159,13 +165,13 @@ export default function VerifyEmailPage() {
           <p className="mt-3 text-center text-sm text-muted-foreground">Enter the six-digit code for <span className="break-all font-medium text-foreground">{email}</span>. Codes expire after five minutes.</p>
           <Label htmlFor="verify-code" className="mt-6 self-start">Verification code</Label>
           <InputOTP id="verify-code" maxLength={6} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp} onComplete={verify} disabled={pending} aria-label="Six-digit verification code" containerClassName="mt-2">
-            <InputOTPGroup className="gap-2">{Array.from({ length: 6 }, (_, index) => <InputOTPSlot key={index} index={index} className="rounded-lg! border! bg-background" />)}</InputOTPGroup>
+            <InputOTPGroup className="gap-2">{Array.from({ length: 6 }, (_, index) => <InputOTPSlot key={index} index={index} className="rounded-lg! border!" />)}</InputOTPGroup>
           </InputOTP>
           {error && <p role="alert" className="mt-4 text-center text-sm text-destructive">{error}</p>}
           {pending && <p role="status" className="mt-4 text-sm text-muted-foreground">Please wait…</p>}
           <Button type="button" className="mt-6 w-full" onClick={resend} disabled={pending || cooldown > 0}>{cooldown > 0 ? `Resend code in ${Math.floor(cooldown / 60)}:${String(cooldown % 60).padStart(2, "0")}` : "Resend code"}</Button>
-          <Button type="button" variant="secondary" className="mt-3 w-full" onClick={() => router.push("/signup")} disabled={pending}>Previous step</Button>
-          <Link href="/login" className="mt-8 text-sm underline-offset-4 hover:underline">Back to login</Link>
+          <Button type="button" variant="secondary" className="mt-3 w-full" onClick={() => router.replace("/signup")} disabled={pending}>Previous step</Button>
+          <Link href="/login" replace className="mt-8 text-sm underline-offset-4 hover:underline">Back to login</Link>
         </div>}
       </div>
     </main>

@@ -8,6 +8,7 @@
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop.ps1",
     "stop:docker": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop.ps1 --docker-quit",
     "reset:auth": "node --env-file=.env.local scripts/reset-auth.mjs",
+    "init:projects": "node --env-file=.env.local scripts/init-projects.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

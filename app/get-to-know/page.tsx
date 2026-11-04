@@ -21,7 +21,7 @@ async function GetToKnowContent() {
             <div key={index} className="h-[136px] rounded-[20px] border border-border bg-card" />
           ))}
         </div>
-        <Link href="/dashboard" className={buttonVariants({ className: "mt-8 w-full max-w-[254px]" })}>Skip</Link>
+        <Link href="/home" replace className={buttonVariants({ className: "mt-8 w-full max-w-[254px]" })}>Skip</Link>
       </div>
     </main>
   )

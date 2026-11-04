@@ -14,7 +14,7 @@ async function SettingsContent({ searchParams }: { searchParams: Promise<{ error
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 px-6 py-12">
       <header className="flex items-center justify-between gap-4">
         <Link href="/" className="text-xl font-medium">Unarchive</Link>
-        <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">Dashboard</Link>
+        <Link href="/home" className="text-sm text-muted-foreground hover:text-foreground">Home</Link>
       </header>
       <section className="space-y-4 pt-10">
         <h1 className="text-3xl font-semibold tracking-tight">Account settings</h1>
