@@ -1,0 +1,19 @@
+{
+  "fields": {
+    "name": "Alex Rivera",
+    "email": "alex@example.com",
+    "password": "ExampleDev123!",
+    "confirm password": "ExampleDev123!",
+    "project title": "Campus Resource Hub",
+    "short description": "A capstone project that helps students discover and share campus resources.",
+    "abstract": "Campus Resource Hub brings student resources together in one searchable platform, making useful information easier to discover and share.",
+    "link": ["https://example.com/project", "https://github.com/example/capstone"],
+    "institution": "Example University",
+    "date started": "2023-08",
+    "date ended": "2024-05",
+    "contributor": ["Alex Rivera", "Sam Santos"],
+    "i have permission to share this project": true,
+    "i have permission to include the contributors and materials in this project": true
+  },
+  "images": ["example.png"]
+}

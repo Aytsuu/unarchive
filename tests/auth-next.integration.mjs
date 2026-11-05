@@ -6,6 +6,7 @@ import { createServer as createNetServer } from "node:net"
 import { setTimeout as delay } from "node:timers/promises"
 import { test } from "node:test"
 import { MongoClient } from "mongodb"
+import { initializeProjectsCollection } from "../scripts/init-projects.mjs"
 
 // Run after `npm run build` with:
 // node --env-file=.env.local --test tests/auth-next.integration.mjs
@@ -22,6 +23,7 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
 
   try {
     await mongo.connect()
+    await initializeProjectsCollection(mongo.db(databaseName))
     server = createHttpServer(async (req, res) => {
       if (req.method !== "POST" || req.url !== "/emails") {
         res.writeHead(404).end()
@@ -55,12 +57,17 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
         MONGO_ENABLE_TRANSACTIONS: "false",
         BETTER_AUTH_SECRET: "integration-test-secret-only-0123456789abcdef",
         BETTER_AUTH_URL: origin,
+        PROJECT_VIEWS_TRUST_PROXY_HEADER: "x-test-client-ip",
         GOOGLE_CLIENT_ID: "",
         GOOGLE_CLIENT_SECRET: "",
         RESEND_API_KEY: "re_test_mock_only",
         RESEND_BASE_URL: `http://127.0.0.1:${mockPort}`,
         EMAIL_FROM: "Test <test@example.invalid>",
         RESEND_DEBUG: "false",
+        R2_ACCOUNT_ID: "00000000000000000000000000000000",
+        R2_ACCESS_KEY_ID: "test-only",
+        R2_SECRET_ACCESS_KEY: "test-only",
+        R2_BUCKET_NAME: "test-only-bucket",
       },
     })
     let ready = false
@@ -70,8 +77,13 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
       if (!ready) await delay(200)
     }
     assert.ok(ready, "local Next server must start")
+    assert.equal((await fetch(`${origin}/api/dev/autofill`)).status, 404, "development defaults must not be exposed in production")
+    assert.equal((await fetch(`${origin}/api/dev/autofill/image/example.png`)).status, 404, "development fixtures must not be exposed in production")
+    assert.doesNotMatch(await (await fetch(`${origin}/login`)).text(), /data-dev-autofill/, "the development toolbar must not render in production")
     const guestMe = await fetch(`${origin}/api/me`)
     assert.equal(guestMe.status, 401)
+    const guestProject = await fetch(`${origin}/api/projects`, { method: "POST", headers: { origin }, body: new FormData() })
+    assert.equal(guestProject.status, 401)
     const guestHome = await fetch(`${origin}/home`)
     assert.equal(guestHome.status, 200)
     assert.match(await guestHome.text(), /Guest/)
@@ -105,7 +117,8 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
     assert.ok(sessionCookie && /httponly/i.test(sessionCookie))
     const session = await fetch(`${origin}/api/auth/get-session`, { headers: { cookie: sessionCookie.split(";")[0] } })
     assert.equal(session.status, 200)
-    assert.equal((await session.json()).user.email, email)
+    const sessionData = await session.json()
+    assert.equal(sessionData.user.email, email)
     const me = await fetch(`${origin}/api/me`, { headers: { cookie: sessionCookie.split(";")[0] } })
     assert.equal(me.status, 200)
     assert.equal((await me.json()).user.email, email)
@@ -118,6 +131,93 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
     const profile = await fetch(`${origin}/profile`, { headers: { cookie: sessionCookie.split(";")[0] } })
     assert.equal(profile.status, 200)
     assert.match(await profile.text(), /Test User/)
+    const project = { title: "Integration test project", description: "Test description", abstract: "Test abstract", institution: "Test university", dateStarted: "2023-02", dateEnded: "2024-11", links: ["https://example.com"], contributors: ["Test User"], consents: { permission: true, contributorsPermission: true }, ownerId: "spoofed-owner" }
+    const projectForm = (data, demo) => {
+      const form = new FormData()
+      form.set("project", JSON.stringify(data))
+      if (demo) form.append("demos", demo, "demo.png")
+      return form
+    }
+    const publishProject = (data, options = {}) => fetch(`${origin}/api/projects`, {
+      method: "POST", headers: { origin: options.origin ?? origin, cookie: sessionCookie.split(";")[0], ...(options.key ? { "Idempotency-Key": options.key } : {}) }, body: projectForm(data, options.demo),
+    })
+    const badOrigin = await publishProject(project, { origin: "https://evil.example" })
+    assert.equal(badOrigin.status, 403, "cross-origin submissions must be rejected")
+    const invalid = await publishProject({ ...project, title: " " })
+    assert.equal(invalid.status, 400, "project title is required")
+    const badConsent = await publishProject({ ...project, consents: { permission: true, contributorsPermission: false } })
+    assert.equal(badConsent.status, 400, "both consents are required")
+    const badLink = await publishProject({ ...project, links: ["javascript:alert(1)"] })
+    assert.equal(badLink.status, 400, "unsafe project links must be rejected")
+    assert.equal((await publishProject({ ...project, dateStarted: "2023-13" })).status, 400, "invalid project months must be rejected")
+    assert.equal((await publishProject({ ...project, dateEnded: "2022-12" })).status, 400, "end month cannot be before start month")
+    await mongo.db(databaseName).collection("projectPublishRateLimit").deleteMany({})
+    const fakeImage = await publishProject(project, { demo: new Blob(["not an image"], { type: "image/png" }) })
+    assert.equal(fakeImage.status, 400, "invalid images must be rejected without contacting object storage")
+    assert.equal(await mongo.db(databaseName).collection("projects").countDocuments(), 0)
+    const created = await publishProject(project)
+    assert.equal(created.status, 201, "a valid project should be published")
+    const result = await created.json()
+    assert.equal(result.success, true)
+    const saved = await mongo.db(databaseName).collection("projects").findOne({ title: project.title })
+    assert.ok(saved)
+    assert.equal(saved.ownerId, sessionData.user.id, "the project owner must come from the session")
+    assert.equal(saved.abstract, "Test abstract", "the abstract must be saved")
+    assert.equal(saved.dateStarted, "2023-02", "start month must be saved")
+    assert.equal(saved.dateEnded, "2024-11", "end month must be saved")
+    assert.equal(saved._id.toString(), result.data.id)
+    assert.deepEqual(saved.demos, [])
+    const key = randomUUID()
+    const retriedProject = { ...project, title: "Retry-safe project" }
+    const firstAttempt = await publishProject(retriedProject, { key })
+    assert.equal(firstAttempt.status, 201)
+    const firstId = (await firstAttempt.json()).data.id
+    const replay = await publishProject(retriedProject, { key })
+    assert.equal(replay.status, 201)
+    assert.equal((await replay.json()).data.id, firstId, "replay returns the original project")
+    const conflict = await publishProject({ ...retriedProject, title: "Changed project" }, { key })
+    assert.equal(conflict.status, 409, "a key cannot be reused for changed content")
+    const concurrentKey = randomUUID()
+    const concurrentProject = { ...project, title: "Concurrent project" }
+    const concurrent = await Promise.all([publishProject(concurrentProject, { key: concurrentKey }), publishProject(concurrentProject, { key: concurrentKey })])
+    assert.deepEqual(concurrent.map((response) => response.status), [201, 201])
+    const concurrentIds = await Promise.all(concurrent.map(async (response) => (await response.json()).data.id))
+    assert.equal(concurrentIds[0], concurrentIds[1])
+    assert.equal(await mongo.db(databaseName).collection("projects").countDocuments({ title: concurrentProject.title }), 1)
+    const browse = await fetch(`${origin}/home`, { headers: { cookie: sessionCookie.split(";")[0] } })
+    assert.match(await browse.text(), /Integration test project/)
+    const detail = await fetch(`${origin}/projects/${result.data.id}`, { headers: { cookie: sessionCookie.split(";")[0] } })
+    assert.equal(detail.status, 200)
+    const detailHtml = await detail.text()
+    assert.match(detailHtml, /Integration test project/)
+    assert.match(detailHtml, /Test abstract/)
+    assert.match(detailHtml, /February 2023/)
+    assert.match(detailHtml, /November 2024/)
+    const metricsUrl = `${origin}/api/projects/${result.data.id}`
+    const metricHeaders = { origin, cookie: sessionCookie.split(";")[0] }
+    assert.equal(await mongo.db(databaseName).collection("projectViews").countDocuments(), 0, "server rendering must not count a view")
+    assert.equal((await fetch(`${metricsUrl}/stars`, { method: "PUT", headers: { origin } })).status, 401)
+    assert.equal((await fetch(`${metricsUrl}/stars`, { method: "PUT", headers: { ...metricHeaders, origin: "https://example.invalid" } })).status, 403)
+    const starResponses = await Promise.all(Array.from({ length: 3 }, () => fetch(`${metricsUrl}/stars`, { method: "PUT", headers: metricHeaders })))
+    assert.ok(starResponses.every((response) => response.status === 200))
+    assert.equal(await mongo.db(databaseName).collection("projectStars").countDocuments(), 1, "concurrent stars are idempotent")
+    const viewRequest = (ip = "192.0.2.1") => fetch(`${metricsUrl}/views`, { method: "POST", headers: { ...metricHeaders, "x-test-client-ip": ip } })
+    const views = await Promise.all([viewRequest(), viewRequest()])
+    assert.ok(views.every((response) => response.status === 200))
+    assert.equal(await mongo.db(databaseName).collection("projectViews").countDocuments(), 1, "repeated views from the same IP count once per day")
+    assert.equal((await viewRequest()).status, 200)
+    assert.equal(await mongo.db(databaseName).collection("projectViews").countDocuments(), 1)
+    const markedDetail = await fetch(`${origin}/projects/${result.data.id}`, { headers: { cookie: sessionCookie.split(";")[0] } })
+    const markedHtml = await markedDetail.text()
+    assert.match(markedHtml, /1 view/)
+    assert.match(markedHtml, /aria-pressed="true"/)
+    const removedStar = await fetch(`${metricsUrl}/stars`, { method: "DELETE", headers: metricHeaders })
+    assert.deepEqual((await removedStar.json()).data, { stars: 0, starred: false })
+    assert.equal((await viewRequest("invalid-ip")).status, 503)
+    assert.equal((await viewRequest("192.0.2.2")).status, 200)
+    assert.equal(await mongo.db(databaseName).collection("projectViews").countDocuments(), 2, "another IP counts separately")
+    const guestImage = await fetch(`${origin}/api/projects/${result.data.id}/demos/0`)
+    assert.equal(guestImage.status, 401)
     const onboarding = await fetch(`${origin}/get-to-know`, { headers: { cookie: sessionCookie.split(";")[0] }, redirect: "manual" })
     assert.equal(onboarding.status, 200)
     const html = await onboarding.text()

@@ -33,8 +33,8 @@ export function AccountMenu({ user }: { user: HomeUser }) {
   return (
     <div>
       <DropdownMenu>
-        <DropdownMenuTrigger aria-label="Account menu" className="rounded-full bg-linear-to-br from-violet-400 via-primary to-violet-800 p-[2px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-          <Avatar className="size-7 after:border-0">
+        <DropdownMenuTrigger aria-label="Account menu" className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <Avatar className="after:border-0">
             {user.image && <AvatarImage src={user.image} alt="" />}
             <AvatarFallback className="text-xs text-foreground">{initials}</AvatarFallback>
           </Avatar>

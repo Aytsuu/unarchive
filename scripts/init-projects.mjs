@@ -11,9 +11,12 @@ const projectValidator = {
       ownerId: { bsonType: "string", minLength: 1, description: "Better Auth user ID" },
       title: { bsonType: "string", minLength: 1 },
       description: { bsonType: "string" },
+      abstract: { bsonType: "string", maxLength: 10000 },
       links: { bsonType: "array", items: { bsonType: "string" } },
       demos: { bsonType: "array", items: { bsonType: "string" }, description: "References to demo assets" },
       institution: { bsonType: "string" },
+      dateStarted: { bsonType: "string", pattern: "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])$" },
+      dateEnded: { bsonType: "string", pattern: "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])$" },
       contributors: { bsonType: "array", items: { bsonType: "string" } },
       consents: {
         bsonType: "object",

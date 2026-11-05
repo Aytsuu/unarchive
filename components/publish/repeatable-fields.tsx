@@ -23,6 +23,7 @@ export function RepeatableFields({ fields, kind, onAdd, onChange }: RepeatableFi
             aria-label={`${kind === "link" ? "Link" : "Contributor"} ${index + 1}`}
             placeholder={kind === "link" ? "Add the URL" : "Enter a contributor's name"}
             type={kind === "link" ? "url" : "text"}
+            maxLength={kind === "link" ? 2048 : 200}
             value={field.value}
             onChange={(event) => onChange(fields.map((item) => item.id === field.id ? { ...item, value: event.target.value } : item))}
           />

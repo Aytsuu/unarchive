@@ -73,9 +73,9 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center bg-background px-5 pb-12 pt-20 text-foreground sm:pt-[212px]">
+    <main className="flex min-h-dvh flex-col items-center bg-background px-5 pb-12 pt-20 text-foreground sm:pt-53">
       <h1 className="text-xl font-medium leading-6">Unarchive</h1>
-      <div className="mt-[51px] w-full max-w-[240px]">
+      <div className="mt-12.75 w-full max-w-60">
         {verified && <p role="status" className="mb-4 text-sm text-muted-foreground">Email verified. You can now sign in.</p>}
         <Button type="button" variant="outline" className="w-full" onClick={signInWithGoogle} disabled={pending}>Continue with Google</Button>
         <div className="my-6 flex items-center gap-3 text-muted-foreground">
@@ -84,7 +84,7 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
           <span aria-hidden="true" className="h-px flex-1 bg-border" />
         </div>
         <form onSubmit={signIn}>
-          <div className="space-y-[15px]">
+          <div className="space-y-3.75">
             <div className="space-y-2"><Label htmlFor="login-email">Email</Label><Input id="login-email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Enter text" className="text-sm" /></div>
             <div className="space-y-2"><Label htmlFor="login-password">Password</Label><Input id="login-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter text" className="text-sm" /></div>
           </div>
@@ -93,8 +93,8 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
           <Button type="submit" className="mt-10 w-full" disabled={pending}>{pending ? "Please wait…" : "Next"}</Button>
         </form>
       </div>
-      <p className="mt-[47px] text-center text-sm font-medium leading-[normal]">By continuing, you agree to our<br />Terms of Service and Privacy Policy.</p>
-      <p className="mt-[50px] text-sm font-medium">Need an account?{"  "}<Link href="/signup" replace className="focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Sign up</Link></p>
+      <p className="mt-11.75 text-center text-sm font-medium leading-[normal]">By continuing, you agree to our<br />Terms of Service and Privacy Policy.</p>
+      <p className="mt-12.5 text-sm font-medium">Need an account?{"  "}<Link href="/signup" replace className="focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Sign up</Link></p>
     </main>
   )
 }

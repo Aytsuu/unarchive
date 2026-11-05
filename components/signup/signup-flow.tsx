@@ -60,12 +60,12 @@ export function SignupFlow() {
   }
 
   return (
-    <main className="min-h-dvh bg-background px-5 pb-16 pt-16 text-foreground sm:pt-[204px]">
+    <main className="min-h-dvh bg-background px-5 pb-16 pt-16 text-foreground sm:pt-51">
       <div className="mx-auto flex w-full flex-col items-center">
         <Link href="/" className="text-xl font-medium leading-10 focus-visible:outline-2 focus-visible:outline-ring">Unarchive</Link>
-        <Progress value={25} aria-label="Signup progress" className="mt-9 w-[220px] [&_[data-slot=progress-track]]:h-2" />
-        <form onSubmit={signUp} className="mt-[55px] w-full max-w-[240px]">
-          <div className="space-y-[9px]">
+        <Progress value={25} aria-label="Signup progress" className="mt-9 w-55 **:data-[slot=progress-track]:h-2" />
+        <form onSubmit={signUp} className="mt-13.75 w-full max-w-60">
+          <div className="space-y-2.25">
             {([
               { key: "name", label: "Name", type: "text", autoComplete: "name" },
               { key: "email", label: "Email", type: "email", autoComplete: "email" },
@@ -81,7 +81,7 @@ export function SignupFlow() {
           {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
           {showRecovery && <Button type="button" variant="link" className="mt-2 h-auto px-0 text-left whitespace-normal" onClick={openVerification}>Request a verification code</Button>}
           <Button type="submit" className="mt-10 w-full" disabled={pending}>{pending ? "Creating account…" : "Next"}</Button>
-          <div className="mt-[45px] text-center text-sm font-medium leading-[normal]">
+          <div className="mt-11.25 text-center text-sm font-medium leading-[normal]">
             <p>By continuing, you agree to our<br />Terms of Service and Privacy Policy.</p>
             <p className="mt-10">Have an account? <Link href="/login" replace className="underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">Log in</Link></p>
           </div>

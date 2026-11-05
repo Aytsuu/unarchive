@@ -144,23 +144,23 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-background px-5 pb-16 pt-16 text-foreground sm:pt-[204px]">
+    <main className="min-h-dvh bg-background px-5 pb-16 pt-16 text-foreground sm:pt-51">
       <div className="mx-auto flex w-full flex-col items-center">
         <Link href="/" className="text-xl font-medium leading-10 focus-visible:outline-2 focus-visible:outline-ring">Unarchive</Link>
-        <Progress value={65} aria-label="Signup progress" className="mt-9 w-[220px] [&_[data-slot=progress-track]]:h-2" />
+        <Progress value={65} aria-label="Signup progress" className="mt-9 w-55 **:data-[slot=progress-track]:h-2" />
         {verified ? (
           <p className="mt-6 text-sm text-muted-foreground" role="status">Email verified. Continuing...</p>
         ) : email === undefined ? (
           <p className="mt-6 text-sm text-muted-foreground" role="status">Loading verification details…</p>
         ) : email === null ? (
-          <div className="mt-6 w-full max-w-[280px] space-y-4 text-center text-sm" role="status">
+          <div className="mt-6 w-full max-w-70 space-y-4 text-center text-sm" role="status">
             <p>Your verification email is unavailable. Return to signup or login to continue.</p>
             <div className="flex justify-center gap-4">
               <Link href="/signup" replace className="underline underline-offset-4">Sign up</Link>
               <Link href="/login" replace className="underline underline-offset-4">Log in</Link>
             </div>
           </div>
-        ) : <div className="mt-6 flex w-full max-w-[280px] flex-col items-center" aria-busy={pending}>
+        ) : <div className="mt-6 flex w-full max-w-70 flex-col items-center" aria-busy={pending}>
           <h1 className="text-center text-sm font-medium">Verify your email</h1>
           <p className="mt-3 text-center text-sm text-muted-foreground">Enter the six-digit code for <span className="break-all font-medium text-foreground">{email}</span>. Codes expire after five minutes.</p>
           <Label htmlFor="verify-code" className="mt-6 self-start">Verification code</Label>

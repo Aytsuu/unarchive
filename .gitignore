@@ -44,6 +44,10 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Runtime data
 .stack/
+dev-data/autofill.local.json
+dev-data/images/*
+!dev-data/images/.gitkeep
+!dev-data/images/example.png
 pids
 *.pid
 *.seed
