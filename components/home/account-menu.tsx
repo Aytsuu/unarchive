@@ -3,17 +3,17 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { cn } from "cn"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { authClient } from "@/lib/auth-client"
 
 export type HomeUser = { name: string; email: string; image?: string | null }
 
-export function AccountMenu({ user }: { user: HomeUser }) {
+export function AccountMenu({ user, avatarClassName }: { user: HomeUser; avatarClassName?: string }) {
   const router = useRouter()
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
-  const initials = user.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || user.email[0]?.toUpperCase()
 
   async function signOut() {
     setError(false)
@@ -31,12 +31,17 @@ export function AccountMenu({ user }: { user: HomeUser }) {
   }
 
   return (
-    <div>
+    <div className="flex items-center">
       <DropdownMenu>
-        <DropdownMenuTrigger aria-label="Account menu" className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-          <Avatar className="after:border-0">
+        <DropdownMenuTrigger aria-label="Account menu" className="inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <Avatar className={cn("after:border-0", avatarClassName)}>
             {user.image && <AvatarImage src={user.image} alt="" />}
-            <AvatarFallback className="text-xs text-foreground">{initials}</AvatarFallback>
+            <AvatarFallback>
+              <span aria-hidden="true" className="flex size-6 items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/assets/icons/user.svg" alt="" className="h-4 w-auto" />
+              </span>
+            </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { ProjectCredits } from "@/components/publish/project-credits"
 import { PublishConsents } from "@/components/publish/publish-consents"
 import { RepeatableFields, type RepeatableField } from "@/components/publish/repeatable-fields"
+import { DemoUploader } from "@/components/publish/demo-uploader"
+import { TopicsSelect } from "@/components/publish/topics-select"
+import type { ReferenceProject } from "@/components/publish/reference-projects"
 
 export function PublishForm() {
   const router = useRouter()
@@ -17,6 +20,7 @@ export function PublishForm() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [abstract, setAbstract] = useState("")
+  const [topics, setTopics] = useState<string[]>([])
   const nextFieldId = useRef(0)
   const [links, setLinks] = useState<RepeatableField[]>([])
   const [photos, setPhotos] = useState<File[]>([])
@@ -24,13 +28,15 @@ export function PublishForm() {
   const [dateStarted, setDateStarted] = useState("")
   const [dateEnded, setDateEnded] = useState("")
   const [contributors, setContributors] = useState<RepeatableField[]>([])
+  const [referenceProjects, setReferenceProjects] = useState<ReferenceProject[]>([])
   const [permission, setPermission] = useState(false)
   const [contributorsPermission, setContributorsPermission] = useState(false)
+  const [detailsAccurate, setDetailsAccurate] = useState(false)
   const [status, setStatus] = useState("")
   const [pending, setPending] = useState(false)
   const pendingRef = useRef(false)
   const submissionId = useRef<string | null>(null)
-  const missingRequired = (step === 1 && !title.trim()) || (step === 3 && (!permission || !contributorsPermission))
+  const missingRequired = (step === 1 && !title.trim()) || (step === 3 && (!permission || !contributorsPermission || !detailsAccurate))
 
   function addContributor() {
     const id = nextFieldId.current++
@@ -87,12 +93,14 @@ export function PublishForm() {
       title: title.trim(),
       description: description.trim(),
       abstract: abstract.trim(),
+      topics,
       links: links.map(({ value }) => value.trim()).filter(Boolean),
       institution: institution.trim(),
       dateStarted,
       dateEnded,
       contributors: contributors.map(({ value }) => value.trim()).filter(Boolean),
-      consents: { permission, contributorsPermission },
+      referenceProjectIds: referenceProjects.map((project) => project.id),
+      consents: { permission, contributorsPermission, detailsAccurate },
     }))
     for (const photo of photos) body.append("demos", photo)
     pendingRef.current = true
@@ -139,7 +147,7 @@ export function PublishForm() {
     event.target.value = ""
   }
 
-  function onDrop(event: DragEvent<HTMLLabelElement>) {
+  function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
     addPhotos(event.dataTransfer.files)
   }
@@ -178,8 +186,12 @@ export function PublishForm() {
         {step === 1 ? (
           <div className="mt-12.5 w-full">
             <Input aria-label="Project title" placeholder="Add title" required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)}/>
-            <Textarea aria-label="Short description" placeholder="Add short description" maxLength={5000} value={description} onChange={(event) => setDescription(event.target.value)} className="mt-6.5 h-29" />
+            <Textarea aria-label="Short description" placeholder="Add short description" maxLength={5000} value={description} onChange={(event) => setDescription(event.target.value)} className="mt-6.5 h-20" />
             <Textarea aria-label="Abstract" placeholder="Add abstract" maxLength={10000} value={abstract} onChange={(event) => setAbstract(event.target.value)} className="mt-6.5 h-29" />
+            <div className="mt-8.5 px-1.25">
+              <h2 className="text-lg font-medium">Topics</h2>
+              <div className="mt-3.5"><TopicsSelect value={topics} onChange={setTopics} /></div>
+            </div>
             <div className="mt-8.5 px-1.25">
               <h2 className="text-lg font-medium">Links</h2>
               <p className="mt-1.75 text-base font-medium">Add relevant links of this project</p>
@@ -188,18 +200,13 @@ export function PublishForm() {
             <div className="mt-3.5 px-1.25">
               <h2 className="text-lg font-medium">Demos</h2>
               <p className="mt-1.75 text-base font-medium">Add relevant demo images of this project</p>
-              <label onDragOver={(event) => event.preventDefault()} onDrop={onDrop} className="mt-3.75 flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-[20px] border border-border text-center focus-within:outline-2 focus-within:outline-ring">
-                <input type="file" accept="image/png,image/jpeg" multiple className="sr-only" onChange={onPhotosChange} />
-                <span className="text-base font-medium">Drop or upload a photo</span>
-                <span className="text-sm text-muted-foreground">png, jpeg, jpg</span>
-              </label>
-              {photos.length > 0 && <ul className="mt-3 space-y-2 text-sm">{photos.map((photo, index) => <li key={`${photo.name}-${index}`} className="flex items-center justify-between gap-2 break-all"><span>{photo.name}</span><Button type="button" variant="ghost" size="xs" onClick={() => setPhotos((current) => current.filter((_, i) => i !== index))} aria-label={`Remove ${photo.name}`}>Remove</Button></li>)}</ul>}
+              <DemoUploader photos={photos} onPhotosChange={onPhotosChange} onDrop={onDrop} onRemove={(index) => setPhotos((current) => current.filter((_, i) => i !== index))} />
             </div>
           </div>
         ) : step === 2 ? (
-          <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateStarted={dateStarted} dateEnded={dateEnded} onDateStartedChange={setDateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={addContributor} onContributorsChange={setContributors} />
+          <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateStarted={dateStarted} dateEnded={dateEnded} onDateStartedChange={setDateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={addContributor} onContributorsChange={setContributors} referenceProjects={referenceProjects} onReferenceProjectsChange={setReferenceProjects} />
         ) : (
-          <PublishConsents permission={permission} contributorsPermission={contributorsPermission} onPermissionChange={setPermission} onContributorsPermissionChange={setContributorsPermission} disabled={pending} />
+          <PublishConsents permission={permission} contributorsPermission={contributorsPermission} detailsAccurate={detailsAccurate} onPermissionChange={setPermission} onContributorsPermissionChange={setContributorsPermission} onDetailsAccurateChange={setDetailsAccurate} disabled={pending} />
         )}
       </section>
     </main>

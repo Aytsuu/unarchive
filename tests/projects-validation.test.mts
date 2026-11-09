@@ -2,10 +2,10 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 const { parseProject } = await import(new URL("../lib/projects/validation.ts", import.meta.url).href)
 
-const valid = { title: " Test ", description: " Description ", institution: " University ", links: [" https://example.com/path ", ""], contributors: [" Ada ", " "], consents: { permission: true, contributorsPermission: true } }
+const valid = { title: " Test ", description: " Description ", institution: " University ", links: [" https://example.com/path ", ""], contributors: [" Ada ", " "], consents: { permission: true, contributorsPermission: true, detailsAccurate: true } }
 
 test("normalizes project fields and ignores empty optional entries", () => {
-  assert.deepEqual(parseProject(valid), { title: "Test", description: "Description", institution: "University", links: ["https://example.com/path"], contributors: ["Ada"], consents: { permission: true, contributorsPermission: true } })
+  assert.deepEqual(parseProject(valid), { title: "Test", description: "Description", institution: "University", links: ["https://example.com/path"], contributors: ["Ada"], consents: { permission: true, contributorsPermission: true, detailsAccurate: true } })
 })
 
 test("accepts an optional abstract and enforces its length and type", () => {
@@ -27,6 +27,33 @@ test("validates optional month and year project dates and chronological order", 
     assert.throws(() => parseProject({ ...valid, dateEnded: date }))
   }
   assert.throws(() => parseProject({ ...valid, dateStarted: "2023-03", dateEnded: "2023-02" }))
+})
+
+test("validates and deduplicates optional project topics", () => {
+  assert.equal(parseProject(valid).topics, undefined)
+  assert.equal(parseProject({ ...valid, topics: [] }).topics, undefined)
+  assert.deepEqual(parseProject({ ...valid, topics: ["AI & Data Science", "Health & Medicine", "AI & Data Science"] }).topics, ["AI & Data Science", "Health & Medicine"])
+  for (const topics of [null, "AI & Data Science", ["unknown"], [null], Array(9).fill("AI & Data Science")]) {
+    assert.throws(() => parseProject({ ...valid, topics }))
+  }
+})
+
+test("validates and normalizes optional referenced project IDs", () => {
+  const first = "abcdef0123456789abcdef01"
+  const second = "0123456789abcdef01234567"
+  assert.equal(parseProject(valid).referenceProjectIds, undefined)
+  assert.equal(parseProject({ ...valid, referenceProjectIds: [] }).referenceProjectIds, undefined)
+  assert.deepEqual(parseProject({ ...valid, referenceProjectIds: [first.toUpperCase(), second, first] }).referenceProjectIds, [first, second])
+  for (const references of [null, first, [null], [""], ["invalid"], ["a".repeat(25)], Array(21).fill(first)]) {
+    assert.throws(() => parseProject({ ...valid, referenceProjectIds: references }))
+  }
+})
+
+test("requires explicit confirmation that project details are accurate", () => {
+  for (const detailsAccurate of [undefined, false, "true", 1, null]) {
+    assert.throws(() => parseProject({ ...valid, consents: { ...valid.consents, detailsAccurate } }))
+  }
+  assert.equal(parseProject({ ...valid, consents: { ...valid.consents, detailsAccurate: true } }).consents.detailsAccurate, true)
 })
 
 test("rejects missing title, unsafe URLs, unconfirmed consents, and excessive values", () => {

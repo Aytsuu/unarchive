@@ -28,7 +28,7 @@ function isAvailable(element: AutofillControl) {
 }
 
 function controls() {
-  return Array.from(document.querySelectorAll<AutofillControl>("main input, main textarea, main select, main [role='checkbox'], main [data-dev-month-picker]"))
+  return Array.from(document.querySelectorAll<AutofillControl>("main input, main textarea, main select, main [role='checkbox'], main [data-dev-month-picker], main [data-dev-topics]"))
     .filter(isAvailable)
 }
 
@@ -84,8 +84,11 @@ async function addMissingFields(fields: Record<string, string | boolean | string
 }
 
 async function fillImages(element: HTMLInputElement, images: AutofillConfig["images"]) {
-  const scope = element.closest("label")?.parentElement
-  const existing = new Set(Array.from(scope?.querySelectorAll("li > span:first-child") ?? []).map((item) => item.textContent?.trim()))
+  const scope = element.closest("[data-demo-uploader]") ?? element.closest("label")?.parentElement
+  const existing = new Set([
+    ...Array.from(scope?.querySelectorAll("[data-uploaded-name]") ?? []).map((item) => item.getAttribute("data-uploaded-name")),
+    ...Array.from(scope?.querySelectorAll("li > span:first-child") ?? []).map((item) => item.textContent?.trim()),
+  ])
   const accepted = images.filter((image) => !existing.has(image.name) && image.url.startsWith("/api/dev/autofill/image/") && ["image/png", "image/jpeg"].includes(image.type))
   if (!accepted.length) return 0
   const selected = element.multiple ? accepted : accepted.slice(0, 1)
@@ -113,7 +116,12 @@ export async function autofillVisibleFields(config: AutofillConfig) {
     }
     const value = fieldValue(element, fields)
     if (value === undefined) continue
-    if (element.hasAttribute("data-dev-month-picker")) {
+    if (element.hasAttribute("data-dev-topics")) {
+      if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+        element.dispatchEvent(new CustomEvent("dev-autofill-topics", { detail: value }))
+        filled++
+      }
+    } else if (element.hasAttribute("data-dev-month-picker")) {
       if (typeof value === "string" && /^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(value)) {
         element.dispatchEvent(new CustomEvent("dev-autofill-month", { detail: value }))
         filled++

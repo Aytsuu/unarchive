@@ -91,6 +91,10 @@ export async function POST(request: Request) {
         return failure("This submission key was already used for a different project.", 409)
       }
     }
+    if (project.referenceProjectIds?.length) {
+      const count = await projects.countDocuments({ _id: { $in: project.referenceProjectIds.map((id) => new ObjectId(id)) } }, { maxTimeMS: 3000 })
+      if (count !== project.referenceProjectIds.length) return failure("One or more reference projects no longer exist.", 400)
+    }
     const demos = await saveProjectDemos(files)
     const now = new Date()
     try {

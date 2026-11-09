@@ -2,6 +2,7 @@ import { MongoClient } from "mongodb"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { validateLocalTarget } from "./reset-auth.mjs"
+import { PROJECT_TOPICS } from "../lib/project-topics.mjs"
 
 const projectValidator = {
   $jsonSchema: {
@@ -12,6 +13,8 @@ const projectValidator = {
       title: { bsonType: "string", minLength: 1 },
       description: { bsonType: "string" },
       abstract: { bsonType: "string", maxLength: 10000 },
+      topics: { bsonType: "array", maxItems: PROJECT_TOPICS.length, uniqueItems: true, items: { bsonType: "string", enum: [...PROJECT_TOPICS] } },
+      referenceProjectIds: { bsonType: "array", maxItems: 20, uniqueItems: true, items: { bsonType: "string", pattern: "^[a-f0-9]{24}$" } },
       links: { bsonType: "array", items: { bsonType: "string" } },
       demos: { bsonType: "array", items: { bsonType: "string" }, description: "References to demo assets" },
       institution: { bsonType: "string" },
@@ -20,7 +23,7 @@ const projectValidator = {
       contributors: { bsonType: "array", items: { bsonType: "string" } },
       consents: {
         bsonType: "object",
-        properties: { permission: { bsonType: "bool" }, contributorsPermission: { bsonType: "bool" } },
+        properties: { permission: { bsonType: "bool" }, contributorsPermission: { bsonType: "bool" }, detailsAccurate: { bsonType: "bool" } },
       },
       createdAt: { bsonType: "date" },
       updatedAt: { bsonType: "date" },

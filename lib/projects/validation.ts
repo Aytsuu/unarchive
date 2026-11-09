@@ -1,3 +1,5 @@
+import { PROJECT_TOPICS } from "../project-topics.mjs"
+
 export type ProjectInput = {
   title: string
   description: string
@@ -5,9 +7,11 @@ export type ProjectInput = {
   institution: string
   dateStarted?: string
   dateEnded?: string
+  topics?: string[]
+  referenceProjectIds?: string[]
   links: string[]
   contributors: string[]
-  consents: { permission: true; contributorsPermission: true }
+  consents: { permission: true; contributorsPermission: true; detailsAccurate: true }
 }
 
 export class ProjectValidationError extends Error {}
@@ -34,6 +38,14 @@ function projectMonth(value: unknown, name: string): string {
   return result
 }
 
+function referenceIds(value: unknown): string[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.length > 20 || value.some((id) => typeof id !== "string" || !/^[a-f\d]{24}$/i.test(id))) {
+    throw new ProjectValidationError("Choose up to 20 valid reference projects.")
+  }
+  return [...new Set(value.map((id: string) => id.toLowerCase()))]
+}
+
 export function parseProject(value: unknown): ProjectInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ProjectValidationError("Invalid project details.")
   const data = value as Record<string, unknown>
@@ -46,6 +58,10 @@ export function parseProject(value: unknown): ProjectInput {
   if (dateStarted && dateEnded && dateEnded < dateStarted) throw new ProjectValidationError("Date ended cannot be before date started.")
   const links = textList(data.links, "Links", 20, 2048)
   const contributors = textList(data.contributors, "Contributors", 50, 200)
+  const topics = textList(data.topics, "Topics", PROJECT_TOPICS.length, 200)
+  if (topics.some((topic) => !PROJECT_TOPICS.includes(topic))) throw new ProjectValidationError("Choose valid topics.")
+  const uniqueTopics = [...new Set(topics)]
+  const referenceProjectIds = referenceIds(data.referenceProjectIds)
   for (const link of links) {
     let parsed: URL
     try { parsed = new URL(link) } catch { throw new ProjectValidationError("Links must be valid HTTP or HTTPS URLs.") }
@@ -54,8 +70,8 @@ export function parseProject(value: unknown): ProjectInput {
     }
   }
   const consents = data.consents
-  if (!consents || typeof consents !== "object" || Array.isArray(consents) || !("permission" in consents) || !("contributorsPermission" in consents) || consents.permission !== true || consents.contributorsPermission !== true) {
-    throw new ProjectValidationError("Please confirm both consents before publishing.")
+  if (!consents || typeof consents !== "object" || Array.isArray(consents) || !("permission" in consents) || !("contributorsPermission" in consents) || !("detailsAccurate" in consents) || consents.permission !== true || consents.contributorsPermission !== true || consents.detailsAccurate !== true) {
+    throw new ProjectValidationError("Please confirm all consents before publishing.")
   }
-  return { title, description, institution, links, contributors, consents: { permission: true, contributorsPermission: true }, ...(abstract ? { abstract } : {}), ...(dateStarted ? { dateStarted } : {}), ...(dateEnded ? { dateEnded } : {}) }
+  return { title, description, institution, links, contributors, consents: { permission: true, contributorsPermission: true, detailsAccurate: true }, ...(abstract ? { abstract } : {}), ...(dateStarted ? { dateStarted } : {}), ...(dateEnded ? { dateEnded } : {}), ...(uniqueTopics.length ? { topics: uniqueTopics } : {}), ...(referenceProjectIds.length ? { referenceProjectIds } : {}) }
 }

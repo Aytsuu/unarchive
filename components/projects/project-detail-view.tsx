@@ -16,6 +16,7 @@ export type ProjectDetail = {
   dateEnded?: string
   contributors?: string[]
   links?: string[]
+  references?: { id: string; title: string }[]
   demoCount: number
   date: { label: string; iso: string } | null
   metrics: ProjectMetricsValue
@@ -46,7 +47,7 @@ function InfoCard({ title, children, className }: { title: string; children?: Re
 export function ProjectDetailView({ project, user }: { project: ProjectDetail; user: HomeUser }) {
   return (
     <main className="min-h-dvh bg-background pb-20 text-foreground">
-      <header className="mx-auto flex w-full max-w-360 items-center justify-between gap-4 px-5 pt-9.25 sm:pl-7.5 sm:pr-8.5">
+      <header className="flex w-full items-center justify-between gap-4 px-5 pt-9.25 sm:pl-7.5 sm:pr-8.5">
         <div className="flex items-center gap-5.25">
           <Link href="/home" aria-label="Back to home" className={buttonVariants({ variant: "secondary", size: "icon" })}>
             <span aria-hidden="true" className="relative block size-5">
@@ -82,6 +83,9 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
           <InfoCard title="Links" className="min-h-42.5">
             {project.links?.map((link, index) => { const href = safeLink(link); return href ? <p key={`${index}-${link}`}><a className="break-all text-primary underline underline-offset-4" href={href} target="_blank" rel="noopener noreferrer">{link}</a></p> : null })}
           </InfoCard>
+          {!!project.references?.length && <InfoCard title="Reference projects">
+            <ul className="space-y-2">{project.references.map((reference) => <li key={reference.id}><Link className="wrap-break-word text-primary underline underline-offset-4" href={`/projects/${reference.id}`}>{reference.title}</Link></li>)}</ul>
+          </InfoCard>}
           <InfoCard title="Demos" className="min-h-28.75">
             {project.demoCount > 0 && <div className="grid gap-4 sm:grid-cols-2">{Array.from({ length: project.demoCount }, (_, index) => (
               // The private image endpoint serves sanitized uploads with varying dimensions.
