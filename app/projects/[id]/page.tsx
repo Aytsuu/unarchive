@@ -12,6 +12,7 @@ type PublicProject = {
   title: string
   description?: string
   abstract?: string
+  topics?: string[]
   institution?: string
   dateStarted?: string
   dateEnded?: string
@@ -28,7 +29,7 @@ async function ProjectContent({ params }: { params: Promise<{ id: string }> }) {
   if (!/^[a-f\d]{24}$/i.test(id)) notFound()
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect("/login")
-  const project = await db.collection<PublicProject>("projects").findOne({ _id: new ObjectId(id) }, { projection: { title: 1, description: 1, abstract: 1, institution: 1, dateStarted: 1, dateEnded: 1, referenceProjectIds: 1, contributors: 1, links: 1, demos: 1, createdAt: 1 } })
+  const project = await db.collection<PublicProject>("projects").findOne({ _id: new ObjectId(id) }, { projection: { title: 1, description: 1, abstract: 1, topics: 1, institution: 1, dateStarted: 1, dateEnded: 1, referenceProjectIds: 1, contributors: 1, links: 1, demos: 1, createdAt: 1 } })
   if (!project) notFound()
   const metrics = await getProjectMetrics(db, new ObjectId(id), session.user.id)
   const referenceIds = (project.referenceProjectIds ?? []).filter((referenceId) => /^[a-f\d]{24}$/i.test(referenceId)).slice(0, 20)
@@ -45,7 +46,7 @@ async function ProjectContent({ params }: { params: Promise<{ id: string }> }) {
     ? { label: new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).format(project.createdAt), iso: project.createdAt.toISOString() }
     : null
 
-  return <ProjectDetailView project={{ id, title: project.title, description: project.description, abstract: project.abstract, institution: project.institution, dateStarted: project.dateStarted, dateEnded: project.dateEnded, contributors: project.contributors, links: project.links, references, demoCount: project.demos?.length ?? 0, date, metrics }} user={{ name: session.user.name, email: session.user.email, image: session.user.image }} />
+  return <ProjectDetailView project={{ id, title: project.title, description: project.description, abstract: project.abstract, topics: project.topics, institution: project.institution, dateStarted: project.dateStarted, dateEnded: project.dateEnded, contributors: project.contributors, links: project.links, references, demoCount: project.demos?.length ?? 0, date, metrics }} user={{ name: session.user.name, email: session.user.email, image: session.user.image }} />
 }
 
 export default function ProjectPage({ params }: PageProps<"/projects/[id]">) {

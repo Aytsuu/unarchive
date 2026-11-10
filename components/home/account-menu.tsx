@@ -46,7 +46,7 @@ export function AccountMenu({ user, avatarClassName }: { user: HomeUser; avatarC
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
-            <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+            <DropdownMenuLabel>My account</DropdownMenuLabel>
             <DropdownMenuItem render={<Link href="/profile" />}>Profile</DropdownMenuItem>
             <DropdownMenuItem render={<Link href="/settings" />}>Settings</DropdownMenuItem>
             <DropdownMenuItem disabled={pending} onClick={signOut}>{pending ? "Signing out…" : "Sign out"}</DropdownMenuItem>

@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"
+import { BrandLogo } from "@/components/brand/brand-logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -74,7 +75,7 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
 
   return (
     <main className="flex min-h-dvh flex-col items-center bg-background px-5 pb-12 pt-20 text-foreground sm:pt-53">
-      <h1 className="text-xl font-medium leading-6">Unarchive</h1>
+      <h1 className="text-xl font-medium leading-6"><BrandLogo /></h1>
       <div className="mt-12.75 w-full max-w-60">
         {verified && <p role="status" className="mb-4 text-sm text-muted-foreground">Email verified. You can now sign in.</p>}
         <Button type="button" variant="outline" className="w-full" onClick={signInWithGoogle} disabled={pending}>Continue with Google</Button>

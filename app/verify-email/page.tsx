@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
+import { BrandLogo } from "@/components/brand/brand-logo"
 import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
@@ -146,7 +147,7 @@ export default function VerifyEmailPage() {
   return (
     <main className="min-h-dvh bg-background px-5 pb-16 pt-16 text-foreground sm:pt-51">
       <div className="mx-auto flex w-full flex-col items-center">
-        <Link href="/" className="text-xl font-medium leading-10 focus-visible:outline-2 focus-visible:outline-ring">Unarchive</Link>
+        <Link href="/" className="text-xl font-medium leading-10 focus-visible:outline-2 focus-visible:outline-ring"><BrandLogo /></Link>
         <Progress value={65} aria-label="Signup progress" className="mt-9 w-55 **:data-[slot=progress-track]:h-2" />
         {verified ? (
           <p className="mt-6 text-sm text-muted-foreground" role="status">Email verified. Continuing...</p>

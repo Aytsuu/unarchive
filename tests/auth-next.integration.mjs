@@ -219,6 +219,8 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
     const detailHtml = await detail.text()
     assert.match(detailHtml, /Integration test project/)
     assert.match(detailHtml, /Test abstract/)
+    assert.match(detailHtml, /AI &amp; Data Science/)
+    assert.match(detailHtml, /Health &amp; Medicine/)
     assert.match(detailHtml, /February 2023/)
     assert.match(detailHtml, /November 2024/)
     const metricsUrl = `${origin}/api/projects/${result.data.id}`

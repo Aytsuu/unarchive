@@ -2,10 +2,10 @@ import "server-only"
 import { randomUUID } from "node:crypto"
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import sharp from "sharp"
+import { PROJECT_DEMO_KEY_PATTERN } from "./project-storage-keys.mjs"
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 5
-const KEY_PATTERN = /^projects\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(png|jpg)$/
 type StorageClient = Pick<S3Client, "send">
 
 export class ProjectStorageValidationError extends Error {}
@@ -31,7 +31,7 @@ async function prepareImage(file: File) {
 
 export function createProjectStorage(client: StorageClient, bucket: string) {
   async function deleteProjectDemos(keys: string[]) {
-    if (keys.some((key) => !KEY_PATTERN.test(key))) throw new Error("Invalid project asset key")
+    if (keys.some((key) => !PROJECT_DEMO_KEY_PATTERN.test(key))) throw new Error("Invalid project asset key")
     let failure = false
     for (const key of keys) {
       try { await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })) } catch { failure = true }
@@ -57,7 +57,7 @@ export function createProjectStorage(client: StorageClient, bucket: string) {
   }
 
   async function getProjectDemo(key: string) {
-    if (!KEY_PATTERN.test(key)) throw new Error("Invalid project asset key")
+    if (!PROJECT_DEMO_KEY_PATTERN.test(key)) throw new Error("Invalid project asset key")
     const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
     if (!result.Body || (result.ContentLength !== undefined && result.ContentLength > MAX_IMAGE_SIZE)) throw new Error("Project image is unavailable")
     let size = 0

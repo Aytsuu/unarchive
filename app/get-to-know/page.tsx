@@ -2,6 +2,7 @@ import Link from "next/link"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
+import { BrandLogo } from "@/components/brand/brand-logo"
 import { buttonVariants } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { auth } from "@/lib/auth"
@@ -13,7 +14,7 @@ async function GetToKnowContent() {
   return (
     <main className="min-h-dvh bg-background px-5 pb-16 pt-16 text-foreground sm:pt-51">
       <div className="mx-auto flex w-full flex-col items-center">
-        <Link href="/" className="text-xl font-medium leading-10 focus-visible:outline-2 focus-visible:outline-ring">Unarchive</Link>
+        <Link href="/" className="text-xl font-medium leading-10 focus-visible:outline-2 focus-visible:outline-ring"><BrandLogo /></Link>
         <Progress value={100} aria-label="Signup progress" className="mt-9 w-55 **:data-[slot=progress-track]:h-2" />
         <h1 className="mt-6 text-sm font-medium">Getting to know you</h1>
         <div className="mt-10.5 grid w-full max-w-194.25 grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">

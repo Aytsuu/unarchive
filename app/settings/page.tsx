@@ -2,6 +2,7 @@ import Link from "next/link"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
+import { BrandLogo } from "@/components/brand/brand-logo"
 import { auth } from "@/lib/auth"
 import { GoogleLinkButton } from "@/components/auth-session/google-link-button"
 
@@ -13,7 +14,7 @@ async function SettingsContent({ searchParams }: { searchParams: Promise<{ error
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 px-6 py-12">
       <header className="flex items-center justify-between gap-4">
-        <Link href="/" className="text-xl font-medium">Unarchive</Link>
+        <Link href="/" className="text-xl font-medium"><BrandLogo /></Link>
         <Link href="/home" className="text-sm text-muted-foreground hover:text-foreground">Home</Link>
       </header>
       <section className="space-y-4 pt-10">

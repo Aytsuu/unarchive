@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProjectMetrics, type ProjectMetricsValue } from "@/components/projects/project-metrics"
+import { ProjectTopics } from "@/components/projects/project-topics"
 
 export type ProjectDetail = {
   id: string
   title: string
   description?: string
   abstract?: string
+  topics?: string[]
   institution?: string
   dateStarted?: string
   dateEnded?: string
@@ -62,9 +64,13 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
         <AccountMenu user={user} />
       </header>
 
-      <article className="mx-auto mt-17 grid w-full max-w-360 gap-10 px-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,439px)] lg:gap-16 lg:pl-21.75 lg:pr-12.5">
-        <div className="min-w-0 lg:pt-2">
-          <div className="mb-2.5 lg:-mt-9.5"><ProjectMetrics key={project.id} projectId={project.id} initial={project.metrics} /></div>
+      <article className="mx-auto mt-7.5 w-full max-w-360 px-5 lg:pl-21.25 lg:pr-12.5">
+        <div className="flex min-h-8.75 flex-wrap items-center gap-x-4 gap-y-3">
+          <ProjectTopics topics={project.topics ?? []} />
+          <div className="ml-auto"><ProjectMetrics key={project.id} projectId={project.id} initial={project.metrics} /></div>
+        </div>
+        <div className="mt-2.75 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,439px)] lg:gap-16">
+        <div className="min-w-0">
           <h1 className="wrap-break-word text-[28px] font-medium leading-tight">{project.title}</h1>
           {project.description && <p className="mt-4 whitespace-pre-wrap wrap-break-word text-xl font-medium">{project.description}</p>}
           {(project.date || !!project.contributors?.length) && <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
@@ -74,7 +80,7 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
           {project.abstract && <section className="mt-12 space-y-2"><h2 className="text-xl font-medium">Abstract</h2><p className="whitespace-pre-wrap wrap-break-word leading-relaxed">{project.abstract}</p></section>}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-5 lg:pt-2" aria-label="Project information">
+        <aside className="flex min-w-0 flex-col gap-5 lg:mt-3" aria-label="Project information">
           <InfoCard title="University/Institution" className="min-h-29.25">
             {project.institution && <p className="wrap-break-word text-muted-foreground">{project.institution}</p>}
             {project.dateStarted && formatMonth(project.dateStarted) && <p className="text-muted-foreground">Date started: <time dateTime={project.dateStarted}>{formatMonth(project.dateStarted)}</time></p>}
@@ -94,6 +100,7 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
             ))}</div>}
           </InfoCard>
         </aside>
+        </div>
       </article>
     </main>
   )
