@@ -19,6 +19,8 @@ test("projects initialization creates a validated collection and is safe to repe
     await projects.insertOne({ ownerId: "test-owner", title: "Test project", description: "Description", abstract: "Project abstract", topics: ["AI & Data Science", "Health & Medicine"], links: ["https://example.com"], demos: ["demo-key"], institution: "Test institution", dateStarted: "2022-01", dateEnded: "2023-12", contributors: ["Test contributor"], consents: { permission: true, contributorsPermission: true }, createdAt: now, updatedAt: now })
     await assert.rejects(projects.updateOne({ title: "Test project" }, { $set: { "consents.detailsAccurate": "yes" } }), /validation/i)
     await projects.updateOne({ title: "Test project" }, { $set: { "consents.detailsAccurate": true } })
+    await assert.rejects(projects.updateOne({ title: "Test project" }, { $set: { "consents.universityIp": "yes" } }), /validation/i)
+    await projects.updateOne({ title: "Test project" }, { $set: { "consents.universityIp": true } })
     await assert.rejects(projects.insertOne({ ownerId: "test-owner", title: "Bad abstract", abstract: 123, createdAt: now, updatedAt: now }), /validation/i)
     await assert.rejects(projects.insertOne({ ownerId: "test-owner", title: "Long abstract", abstract: "a".repeat(10001), createdAt: now, updatedAt: now }), /validation/i)
     await assert.rejects(projects.insertOne({ ownerId: "test-owner", title: "Invalid month", dateStarted: "2024-13", createdAt: now, updatedAt: now }), /validation/i)

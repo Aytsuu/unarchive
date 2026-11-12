@@ -15,7 +15,8 @@
     "contributor": ["Alex Rivera", "Sam Santos"],
     "i have permission to share this project": true,
     "i have permission to include the contributors and materials in this project": true,
-    "i confirm that all details provided are accurate and not falsified": true
+    "i confirm that all details provided are accurate and not falsified": true,
+    "i agree to respect the intellectual property rights and applicable policies of the university or institution": true
   },
   "images": ["example.png"]
 }

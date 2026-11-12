@@ -2,7 +2,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 const { getSubmissionIdentity } = await import(new URL("../lib/projects/idempotency.ts", import.meta.url).href)
 
-const project = { title: "Project", description: "", institution: "", links: [], contributors: [], consents: { permission: true, contributorsPermission: true, detailsAccurate: true } }
+const project = { title: "Project", description: "", institution: "", links: [], contributors: [], consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true } }
 const key = "66f68d76-f6d3-4108-b26d-a9e0fc02997a"
 
 test("keys are scoped per owner and matching inputs have matching fingerprints", async () => {

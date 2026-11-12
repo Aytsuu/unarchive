@@ -1,6 +1,6 @@
 "use client"
 
-import { Input } from "@/components/ui/input"
+import { InstitutionSelect } from "@/components/publish/institution-select"
 import { Label } from "@/components/ui/label"
 import { RepeatableFields, type RepeatableField } from "@/components/publish/repeatable-fields"
 import { MonthPicker } from "@/components/publish/month-picker"
@@ -25,7 +25,7 @@ export function ProjectCredits({ institution, onInstitutionChange, dateStarted, 
     <div className="mt-12.5 w-full space-y-8">
       <div className="space-y-2">
         <Label htmlFor="institution">Institution</Label>
-        <Input id="institution" placeholder="Enter institution" maxLength={200} value={institution} onChange={(event) => onInstitutionChange(event.target.value)} />
+        <InstitutionSelect value={institution} onChange={onInstitutionChange} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-2">

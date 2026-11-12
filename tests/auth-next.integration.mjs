@@ -136,7 +136,7 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
     const profile = await fetch(`${origin}/profile`, { headers: { cookie: sessionCookie.split(";")[0] } })
     assert.equal(profile.status, 200)
     assert.match(await profile.text(), /Test User/)
-    const project = { title: "Integration test project", description: "Test description", abstract: "Test abstract", institution: "Test university", dateStarted: "2023-02", dateEnded: "2024-11", topics: ["AI & Data Science", "Health & Medicine"], links: ["https://example.com"], contributors: ["Test User"], consents: { permission: true, contributorsPermission: true, detailsAccurate: true }, ownerId: "spoofed-owner" }
+    const project = { title: "Integration test project", description: "Test description", abstract: "Test abstract", institution: "Test university", dateStarted: "2023-02", dateEnded: "2024-11", topics: ["AI & Data Science", "Health & Medicine"], links: ["https://example.com"], contributors: ["Test User"], consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true }, ownerId: "spoofed-owner" }
     const projectForm = (data, demo) => {
       const form = new FormData()
       form.set("project", JSON.stringify(data))
@@ -150,10 +150,12 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
     assert.equal(badOrigin.status, 403, "cross-origin submissions must be rejected")
     const invalid = await publishProject({ ...project, title: " " })
     assert.equal(invalid.status, 400, "project title is required")
+    assert.equal((await publishProject({ ...project, consents: { ...project.consents, universityIp: false } })).status, 400, "university IP consent is required")
+    assert.equal((await publishProject({ ...project, consents: { permission: true, contributorsPermission: true, detailsAccurate: true } })).status, 400, "missing university IP consent must be rejected")
     const badConsent = await publishProject({ ...project, consents: { ...project.consents, contributorsPermission: false } })
     assert.equal(badConsent.status, 400, "all consents are required")
     assert.equal((await publishProject({ ...project, consents: { ...project.consents, detailsAccurate: false } })).status, 400, "accuracy confirmation is required")
-    assert.equal((await publishProject({ ...project, consents: { permission: true, contributorsPermission: true } })).status, 400, "missing accuracy confirmation must be rejected")
+    assert.equal((await publishProject({ ...project, consents: { permission: true, contributorsPermission: true, universityIp: true } })).status, 400, "missing accuracy confirmation must be rejected")
     await mongo.db(databaseName).collection("projectPublishRateLimit").deleteMany({})
     const badLink = await publishProject({ ...project, links: ["javascript:alert(1)"] })
     assert.equal(badLink.status, 400, "unsafe project links must be rejected")
@@ -175,6 +177,7 @@ test("Next signup sends an OTP and verification establishes the onboarding sessi
     assert.ok(saved)
     assert.equal(saved.ownerId, sessionData.user.id, "the project owner must come from the session")
     assert.equal(saved.consents.detailsAccurate, true, "the accuracy confirmation must be saved")
+    assert.equal(saved.consents.universityIp, true, "the university IP consent must be saved")
     assert.equal(saved.abstract, "Test abstract", "the abstract must be saved")
     assert.deepEqual(saved.topics, ["AI & Data Science", "Health & Medicine"], "selected topics must be saved")
     assert.equal(saved.dateStarted, "2023-02", "start month must be saved")

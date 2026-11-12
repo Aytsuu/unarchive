@@ -2,10 +2,10 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 const { parseProject } = await import(new URL("../lib/projects/validation.ts", import.meta.url).href)
 
-const valid = { title: " Test ", description: " Description ", institution: " University ", links: [" https://example.com/path ", ""], contributors: [" Ada ", " "], consents: { permission: true, contributorsPermission: true, detailsAccurate: true } }
+const valid = { title: " Test ", description: " Description ", institution: " University ", links: [" https://example.com/path ", ""], contributors: [" Ada ", " "], consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true } }
 
 test("normalizes project fields and ignores empty optional entries", () => {
-  assert.deepEqual(parseProject(valid), { title: "Test", description: "Description", institution: "University", links: ["https://example.com/path"], contributors: ["Ada"], consents: { permission: true, contributorsPermission: true, detailsAccurate: true } })
+  assert.deepEqual(parseProject(valid), { title: "Test", description: "Description", institution: "University", links: ["https://example.com/path"], contributors: ["Ada"], consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true } })
 })
 
 test("accepts an optional abstract and enforces its length and type", () => {
@@ -53,7 +53,14 @@ test("requires explicit confirmation that project details are accurate", () => {
   for (const detailsAccurate of [undefined, false, "true", 1, null]) {
     assert.throws(() => parseProject({ ...valid, consents: { ...valid.consents, detailsAccurate } }))
   }
-  assert.equal(parseProject({ ...valid, consents: { ...valid.consents, detailsAccurate: true } }).consents.detailsAccurate, true)
+  assert.equal(parseProject({ ...valid, consents: { ...valid.consents, detailsAccurate: true, universityIp: true } }).consents.detailsAccurate, true)
+})
+
+test("requires explicit confirmation to respect university intellectual property", () => {
+  for (const universityIp of [undefined, false, "true", 1, null]) {
+    assert.throws(() => parseProject({ ...valid, consents: { ...valid.consents, universityIp } }))
+  }
+  assert.equal(parseProject(valid).consents.universityIp, true)
 })
 
 test("rejects missing title, unsafe URLs, unconfirmed consents, and excessive values", () => {

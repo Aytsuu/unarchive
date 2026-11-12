@@ -23,7 +23,7 @@ const projectValidator = {
       contributors: { bsonType: "array", items: { bsonType: "string" } },
       consents: {
         bsonType: "object",
-        properties: { permission: { bsonType: "bool" }, contributorsPermission: { bsonType: "bool" }, detailsAccurate: { bsonType: "bool" } },
+        properties: { permission: { bsonType: "bool" }, contributorsPermission: { bsonType: "bool" }, detailsAccurate: { bsonType: "bool" }, universityIp: { bsonType: "bool" } },
       },
       createdAt: { bsonType: "date" },
       updatedAt: { bsonType: "date" },

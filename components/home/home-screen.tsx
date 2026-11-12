@@ -7,7 +7,8 @@ import { StarIcon, UserGroupIcon, ViewIcon } from "@hugeicons/core-free-icons"
 import { topicStyles, TopicIcon } from "@/components/projects/topic-icon"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { AccountMenu, type HomeUser } from "@/components/home/account-menu"
-import { HomeSearch } from "@/components/home/home-search"
+import type { ReactNode } from "react"
+import { HomeStatistics } from "@/components/home/home-statistics"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { ResponsivePageSize } from "@/components/home/responsive-page-size"
 
@@ -30,12 +31,12 @@ function ProjectCard({ project }: { project: HomeProject }) {
           <span className="inline-flex items-center gap-1" aria-label={`${project.stars} stars`}><HugeiconsIcon icon={StarIcon} size={15} aria-hidden="true" />{project.stars}</span>
           <span className="inline-flex items-center gap-1" aria-label={`${project.collaborators} collaborators including publisher`}><HugeiconsIcon icon={UserGroupIcon} size={15} aria-hidden="true" />{project.collaborators}</span>
         </div>
-        <Link href={`/projects/${project.id}`} className={buttonVariants({ className: "mt-6 w-full" })}>Read more details</Link>
+        <Link href={`/projects/${project.id}`} aria-label={`Read ${project.title}`} className={buttonVariants({ className: "mt-6 w-22.25 self-end" })}>Read</Link>
     </Card>
   )
 }
 
-export function HomeScreen({ user, projects, total, search, page, pageSize }: { user: HomeUser | null; projects: HomeProject[]; total: number; search: string; page: number; pageSize: number }) {
+export function ProjectListing({ user, projects, total, search, page, pageSize }: { user: HomeUser | null; projects: HomeProject[]; total: number; search: string; page: number; pageSize: number }) {
   const pages = Math.max(1, Math.ceil(total / pageSize))
   function pageHref(target: number) {
     const params = new URLSearchParams({ page: String(target), size: String(pageSize) })
@@ -43,41 +44,6 @@ export function HomeScreen({ user, projects, total, search, page, pageSize }: { 
     return `/home?${params.toString()}`
   }
   return (
-    <main className="min-h-dvh bg-background pb-16 text-foreground">
-      {user && <ResponsivePageSize pageSize={pageSize} />}
-      <header className="flex items-center justify-between gap-2 px-3 pt-9.25 sm:gap-4 sm:pl-11.5 sm:pr-8.5">
-        <Link href="/home" className="text-base font-medium sm:text-xl"><BrandLogo compactOnSmallScreens /></Link>
-        <div className="flex items-center gap-1 sm:gap-3">
-          {user && <Link href="/publish" className={buttonVariants({ className: "gap-2.5 max-sm:px-2" })}><Image src="/assets/icons/publish/archive.svg" alt="" width={16} height={16} className="brightness-0 invert" />Publish</Link>}
-          <HomeSearch search={search} projects={projects} />
-          {user && <Popover>
-            <PopoverTrigger render={<Button type="button" variant="outline" size="icon" aria-label="Notifications" />}>
-              <span aria-hidden="true" className="flex size-6 items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/icons/notification.svg" alt="" className="h-4 w-auto" />
-              </span>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-64">
-              <p className="text-sm text-muted-foreground">Notifications are coming soon.</p>
-            </PopoverContent>
-          </Popover>}
-          {user ? <AccountMenu user={user} avatarClassName="size-9" /> : <span className={buttonVariants({ variant: "secondary", size: "sm", className: "w-[75px]" })}>Guest</span>}
-        </div>
-      </header>
-
-      <div className="mx-auto mt-12.75 w-full max-w-341.5 px-5 sm:px-5">
-        <section aria-labelledby="topics-heading">
-          <h1 id="topics-heading" className="text-base font-medium leading-5">Topics</h1>
-          <div className="mt-4 grid grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Object.entries(topicStyles).map(([name, topic]) => <div key={name} className={`flex min-h-15 items-center gap-3 rounded-[20px] px-5 py-2 text-base font-medium leading-tight ${topic.color}`}>
-              <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center">
-                <TopicIcon topic={name} size={24} />
-              </span>
-              <span>{name}</span>
-            </div>)}
-          </div>
-        </section>
-
         <section aria-labelledby="projects-heading" className="mt-14">
           <h2 id="projects-heading" className="text-base font-medium leading-5">Projects</h2>
           {search && <p className="mt-2 text-sm text-muted-foreground">Results for “{search}” · <Link href="/home" className="underline underline-offset-4">Clear search</Link></p>}
@@ -102,7 +68,56 @@ export function HomeScreen({ user, projects, total, search, page, pageSize }: { 
             )}
           </div>
         </section>
+  )
+}
+
+export function HomeScreen({ user, pageSize, searchControl, topicsContent, children }: { user: HomeUser | null; pageSize: number; searchControl: ReactNode; topicsContent: ReactNode; children: ReactNode }) {
+  return (
+    <main className="min-h-dvh bg-background pb-16 text-foreground">
+      {user && <ResponsivePageSize pageSize={pageSize} />}
+      <header className="flex items-center justify-between gap-2 px-3 pt-9.25 sm:gap-4 sm:pl-11.5 sm:pr-8.5">
+        <Link href="/home" className="text-base font-medium sm:text-xl"><BrandLogo compactOnSmallScreens /></Link>
+        <div className="flex items-center gap-1 sm:gap-3">
+          {user && <Link href="/publish" className={buttonVariants({ className: "gap-2.5 max-sm:px-2" })}><Image src="/assets/icons/publish/archive.svg" alt="" width={16} height={16} className="brightness-0 invert" />Publish</Link>}
+          {searchControl}
+          {user && <Popover>
+            <PopoverTrigger render={<Button type="button" variant="outline" size="icon" aria-label="Notifications" />}>
+              <span aria-hidden="true" className="flex size-6 items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/assets/icons/notification.svg" alt="" className="h-4 w-auto" />
+              </span>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64">
+              <p className="text-sm text-muted-foreground">Notifications are coming soon.</p>
+            </PopoverContent>
+          </Popover>}
+          {user ? <AccountMenu user={user} avatarClassName="size-9" /> : <span className={buttonVariants({ variant: "secondary", size: "sm", className: "w-[75px]" })}>Guest</span>}
+        </div>
+      </header>
+
+      <div className="mx-auto mt-12.75 w-full max-w-341.5 px-5 sm:px-5">
+        <HomeStatistics />
+        {topicsContent}
+
+        {children}
       </div>
     </main>
+  )
+}
+
+export function HomeTopics() {
+  return (
+        <section aria-labelledby="topics-heading">
+          <h1 id="topics-heading" className="text-base font-medium leading-5">Topics</h1>
+          <div className="mt-4 grid grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Object.entries(topicStyles).map(([name, topic]) => <div key={name} className={`flex min-h-15 items-center gap-3 rounded-[20px] px-5 py-2 text-base font-medium leading-tight ${topic.color}`}>
+              <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center">
+                <TopicIcon topic={name} size={24} />
+              </span>
+              <span>{name}</span>
+            </div>)}
+          </div>
+        </section>
+
   )
 }

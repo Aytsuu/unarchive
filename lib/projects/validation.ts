@@ -11,7 +11,7 @@ export type ProjectInput = {
   referenceProjectIds?: string[]
   links: string[]
   contributors: string[]
-  consents: { permission: true; contributorsPermission: true; detailsAccurate: true }
+  consents: { permission: true; contributorsPermission: true; detailsAccurate: true; universityIp: true }
 }
 
 export class ProjectValidationError extends Error {}
@@ -70,8 +70,8 @@ export function parseProject(value: unknown): ProjectInput {
     }
   }
   const consents = data.consents
-  if (!consents || typeof consents !== "object" || Array.isArray(consents) || !("permission" in consents) || !("contributorsPermission" in consents) || !("detailsAccurate" in consents) || consents.permission !== true || consents.contributorsPermission !== true || consents.detailsAccurate !== true) {
+  if (!consents || typeof consents !== "object" || Array.isArray(consents) || !("permission" in consents) || !("contributorsPermission" in consents) || !("detailsAccurate" in consents) || !("universityIp" in consents) || consents.permission !== true || consents.contributorsPermission !== true || consents.detailsAccurate !== true || consents.universityIp !== true) {
     throw new ProjectValidationError("Please confirm all consents before publishing.")
   }
-  return { title, description, institution, links, contributors, consents: { permission: true, contributorsPermission: true, detailsAccurate: true }, ...(abstract ? { abstract } : {}), ...(dateStarted ? { dateStarted } : {}), ...(dateEnded ? { dateEnded } : {}), ...(uniqueTopics.length ? { topics: uniqueTopics } : {}), ...(referenceProjectIds.length ? { referenceProjectIds } : {}) }
+  return { title, description, institution, links, contributors, consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true }, ...(abstract ? { abstract } : {}), ...(dateStarted ? { dateStarted } : {}), ...(dateEnded ? { dateEnded } : {}), ...(uniqueTopics.length ? { topics: uniqueTopics } : {}), ...(referenceProjectIds.length ? { referenceProjectIds } : {}) }
 }

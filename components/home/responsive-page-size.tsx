@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { pageSizeForWidth } from "@/lib/projects/listing-viewport.mjs"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 export function ResponsivePageSize({ pageSize }: { pageSize: number }) {
@@ -10,8 +11,7 @@ export function ResponsivePageSize({ pageSize }: { pageSize: number }) {
 
   useEffect(() => {
     function updatePageSize() {
-      const width = window.innerWidth
-      const size = width >= 1280 ? 12 : width >= 1024 ? 9 : width >= 640 ? 6 : 3
+      const size = pageSizeForWidth(window.innerWidth)
       if (size === pageSize) return
       const params = new URLSearchParams(searchParams.toString())
       params.set("size", String(size))

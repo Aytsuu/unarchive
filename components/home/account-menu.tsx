@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { cn } from "cn"
@@ -12,6 +13,7 @@ export type HomeUser = { name: string; email: string; image?: string | null }
 
 export function AccountMenu({ user, avatarClassName }: { user: HomeUser; avatarClassName?: string }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
 
@@ -21,6 +23,7 @@ export function AccountMenu({ user, avatarClassName }: { user: HomeUser; avatarC
     try {
       const result = await authClient.signOut()
       if (result.error) { setError(true); return }
+      queryClient.clear()
       router.replace("/home")
       router.refresh()
     } catch {

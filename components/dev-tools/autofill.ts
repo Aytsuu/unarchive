@@ -17,6 +17,7 @@ function isDisplayed(element: Element) {
 
 function isAvailable(element: AutofillControl) {
   if (element.closest("[data-dev-autofill], form[role='search']")) return false
+  if (!element.hasAttribute("data-dev-institution") && element.closest("[data-dev-institution]")) return false
   if (element.matches(":disabled, [aria-disabled='true']")) return false
   if (element instanceof HTMLInputElement && ["hidden", "submit", "button", "reset", "search"].includes(element.type)) return false
   if (element instanceof HTMLInputElement && element.type === "file") {
@@ -28,7 +29,7 @@ function isAvailable(element: AutofillControl) {
 }
 
 function controls() {
-  return Array.from(document.querySelectorAll<AutofillControl>("main input, main textarea, main select, main [role='checkbox'], main [data-dev-month-picker], main [data-dev-topics]"))
+  return Array.from(document.querySelectorAll<AutofillControl>("main input, main textarea, main select, main [role='checkbox'], main [data-dev-month-picker], main [data-dev-topics], main [data-dev-institution]"))
     .filter(isAvailable)
 }
 
@@ -116,7 +117,12 @@ export async function autofillVisibleFields(config: AutofillConfig) {
     }
     const value = fieldValue(element, fields)
     if (value === undefined) continue
-    if (element.hasAttribute("data-dev-topics")) {
+    if (element.hasAttribute("data-dev-institution")) {
+      if (typeof value === "string") {
+        element.dispatchEvent(new CustomEvent("dev-autofill-institution", { detail: value }))
+        filled++
+      }
+    } else if (element.hasAttribute("data-dev-topics")) {
       if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
         element.dispatchEvent(new CustomEvent("dev-autofill-topics", { detail: value }))
         filled++

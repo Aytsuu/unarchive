@@ -1,3 +1,7 @@
+import { revalidateTag } from "next/cache"
+import { PROJECT_LIST_TAG, getListingMetrics, getProjectListing } from "@/lib/projects/listing"
+import { connection } from "next/server"
+import { parseListingParams } from "@/lib/projects/listing-params.mjs"
 import { auth } from "@/lib/auth"
 import { ObjectId } from "mongodb"
 import { db } from "@/lib/mongodb"
@@ -20,6 +24,7 @@ function failure(error: string, status: number, headers?: Record<string, string>
 }
 
 function success(id: ObjectId) {
+  try { revalidateTag(PROJECT_LIST_TAG, { expire: 0 }) } catch (error) { console.error("Project listing cache invalidation failed", error) }
   return Response.json({ success: true, data: { id: id.toString() } }, { status: 201, headers: { "Cache-Control": "no-store" } })
 }
 
@@ -67,6 +72,22 @@ function readSubmission(form: FormData) {
     throw new RequestError("Upload up to five images, each no larger than 5 MiB.", 400)
   }
   return { project, files: files as File[] }
+}
+
+
+export async function GET(request: Request) {
+  await connection()
+  try {
+    const session = await auth.api.getSession({ headers: request.headers })
+    const { search, page, pageSize } = parseListingParams(new URL(request.url).searchParams, !!session)
+    const listing = await getProjectListing(search, page, pageSize)
+    const metrics = await getListingMetrics(listing.projects.map((project) => project.id))
+    const projects = listing.projects.map((project) => ({ ...project, views: metrics.views.get(project.id) ?? 0, stars: metrics.stars.get(project.id) ?? 0 }))
+    return Response.json({ success: true, data: { ...listing, projects, pageSize } }, { headers: { "Cache-Control": "no-store" } })
+  } catch (error) {
+    console.error("Project listing failed", error)
+    return failure("Unable to load projects. Please try again.", 500)
+  }
 }
 
 export async function POST(request: Request) {

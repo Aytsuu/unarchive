@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { StarIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { useEffect, useRef, useState } from "react"
@@ -7,6 +8,7 @@ import { useEffect, useRef, useState } from "react"
 export type ProjectMetricsValue = { views: number; stars: number; starred: boolean }
 
 export function ProjectMetrics({ projectId, initial }: { projectId: string; initial: ProjectMetricsValue }) {
+  const queryClient = useQueryClient()
   const [metrics, setMetrics] = useState(initial)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
@@ -19,10 +21,13 @@ export function ProjectMetrics({ projectId, initial }: { projectId: string; init
     }).then(async (response) => {
       if (!response.ok) throw new Error("View count unavailable")
       const result = await response.json()
-      if (!controller.signal.aborted && typeof result.data?.views === "number") setMetrics((current) => ({ ...current, views: result.data.views }))
+      if (!controller.signal.aborted && typeof result.data?.views === "number") {
+        setMetrics((current) => ({ ...current, views: result.data.views }))
+        void queryClient.invalidateQueries({ queryKey: ["project-list"] })
+      }
     }).catch(() => { if (!controller.signal.aborted) console.warn("Project view could not be recorded") })
     return () => controller.abort()
-  }, [projectId])
+  }, [projectId, queryClient])
 
   async function toggleStar() {
     if (pendingRef.current) return
@@ -35,6 +40,7 @@ export function ProjectMetrics({ projectId, initial }: { projectId: string; init
       const result = await response.json()
       if (typeof result.data?.stars !== "number" || typeof result.data?.starred !== "boolean") throw new Error("Unable to update your star. Please try again.")
       setMetrics((current) => ({ ...current, stars: result.data.stars, starred: result.data.starred }))
+      void queryClient.invalidateQueries({ queryKey: ["project-list"] })
     } catch {
       setError("Unable to update your star. Please try again.")
     } finally {

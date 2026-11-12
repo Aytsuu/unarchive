@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -16,6 +17,7 @@ import type { ReferenceProject } from "@/components/publish/reference-projects"
 
 export function PublishForm() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [step, setStep] = useState(1)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -32,11 +34,12 @@ export function PublishForm() {
   const [permission, setPermission] = useState(false)
   const [contributorsPermission, setContributorsPermission] = useState(false)
   const [detailsAccurate, setDetailsAccurate] = useState(false)
+  const [universityIp, setUniversityIp] = useState(false)
   const [status, setStatus] = useState("")
   const [pending, setPending] = useState(false)
   const pendingRef = useRef(false)
   const submissionId = useRef<string | null>(null)
-  const missingRequired = (step === 1 && !title.trim()) || (step === 3 && (!permission || !contributorsPermission || !detailsAccurate))
+  const missingRequired = (step === 1 && !title.trim()) || (step === 3 && (!permission || !contributorsPermission || !detailsAccurate || !universityIp))
 
   function addContributor() {
     const id = nextFieldId.current++
@@ -100,7 +103,7 @@ export function PublishForm() {
       dateEnded,
       contributors: contributors.map(({ value }) => value.trim()).filter(Boolean),
       referenceProjectIds: referenceProjects.map((project) => project.id),
-      consents: { permission, contributorsPermission, detailsAccurate },
+      consents: { permission, contributorsPermission, detailsAccurate, universityIp },
     }))
     for (const photo of photos) body.append("demos", photo)
     pendingRef.current = true
@@ -124,6 +127,10 @@ export function PublishForm() {
       setPending(false)
       return
     }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["project-list"] }),
+      queryClient.invalidateQueries({ queryKey: ["project-statistics"] }),
+    ])
     router.replace("/home")
     router.refresh()
   }
@@ -206,7 +213,7 @@ export function PublishForm() {
         ) : step === 2 ? (
           <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateStarted={dateStarted} dateEnded={dateEnded} onDateStartedChange={setDateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={addContributor} onContributorsChange={setContributors} referenceProjects={referenceProjects} onReferenceProjectsChange={setReferenceProjects} />
         ) : (
-          <PublishConsents permission={permission} contributorsPermission={contributorsPermission} detailsAccurate={detailsAccurate} onPermissionChange={setPermission} onContributorsPermissionChange={setContributorsPermission} onDetailsAccurateChange={setDetailsAccurate} disabled={pending} />
+          <PublishConsents permission={permission} contributorsPermission={contributorsPermission} detailsAccurate={detailsAccurate} universityIp={universityIp} onPermissionChange={setPermission} onContributorsPermissionChange={setContributorsPermission} onDetailsAccurateChange={setDetailsAccurate} onUniversityIpChange={setUniversityIp} disabled={pending} />
         )}
       </section>
     </main>
