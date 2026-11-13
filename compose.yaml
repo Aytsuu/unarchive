@@ -2,6 +2,7 @@ services:
   mongodb:
     image: mongo:8.0
     restart: unless-stopped
+    entrypoint: ["bash", "/opt/unarchive/mongo-entrypoint.sh"]
     ports:
       - "127.0.0.1:27017:27017"
     environment:
@@ -9,6 +10,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?Set MONGO_INITDB_ROOT_PASSWORD in .env.local}
     volumes:
       - mongodb_data:/data/db
+      - ./scripts/mongo-entrypoint.sh:/opt/unarchive/mongo-entrypoint.sh:ro
+      - ./scripts/mongo-init-replica.js:/opt/unarchive/mongo-init-replica.js:ro
 
 volumes:
   mongodb_data:

@@ -5,7 +5,7 @@ const { parseProject } = await import(new URL("../lib/projects/validation.ts", i
 const valid = { title: " Test ", description: " Description ", institution: " University ", links: [" https://example.com/path ", ""], contributors: [" Ada ", " "], consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true } }
 
 test("normalizes project fields and ignores empty optional entries", () => {
-  assert.deepEqual(parseProject(valid), { title: "Test", description: "Description", institution: "University", links: ["https://example.com/path"], contributors: ["Ada"], consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true } })
+  assert.deepEqual(parseProject(valid), { projectType: "thesis", title: "Test", description: "Description", institution: "University", links: ["https://example.com/path"], contributors: ["Ada"], consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true } })
 })
 
 test("accepts an optional abstract and enforces its length and type", () => {
@@ -75,4 +75,16 @@ test("rejects missing title, unsafe URLs, unconfirmed consents, and excessive va
     { ...valid, consents: null },
     null,
   ]) assert.throws(() => parseProject(data))
+})
+
+
+test("academic completion is sourced from the end date, never a separate submitted year", () => {
+  assert.equal(parseProject(valid).projectType, "thesis")
+  const ended = parseProject({ ...valid, dateEnded: "2024-05", completionYear: "2022" })
+  assert.equal(ended.dateEnded, "2024-05")
+  assert.equal("completionYear" in ended, false)
+  const missing = parseProject({ ...valid, completionYear: "2024" })
+  assert.equal(missing.dateEnded, undefined)
+  assert.equal("completionYear" in missing, false)
+  for (const projectType of [null, "", "dissertation", 42]) assert.throws(() => parseProject({ ...valid, projectType }))
 })

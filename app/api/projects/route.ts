@@ -4,7 +4,9 @@ import { connection } from "next/server"
 import { parseListingParams } from "@/lib/projects/listing-params.mjs"
 import { auth } from "@/lib/auth"
 import { ObjectId } from "mongodb"
-import { db } from "@/lib/mongodb"
+import { db, mongoClient } from "@/lib/mongodb"
+import { captureLegacyBaseline, createInitialVersionedProject, ProjectReferenceNotFoundError } from "@/lib/projects/versions"
+import { getSavedProjectIds } from "@/lib/projects/saved"
 import { ProjectStorageConfigurationError, ProjectStorageValidationError, deleteProjectDemos, saveProjectDemos } from "@/lib/project-storage"
 import { claimProjectAttempt } from "@/lib/projects/rate-limit"
 import { parseProject, ProjectValidationError } from "@/lib/projects/validation"
@@ -79,10 +81,13 @@ export async function GET(request: Request) {
   await connection()
   try {
     const session = await auth.api.getSession({ headers: request.headers })
-    const { search, page, pageSize } = parseListingParams(new URL(request.url).searchParams, !!session)
+    const { search, page, pageSize } = parseListingParams(new URL(request.url).searchParams)
     const listing = await getProjectListing(search, page, pageSize)
-    const metrics = await getListingMetrics(listing.projects.map((project) => project.id))
-    const projects = listing.projects.map((project) => ({ ...project, views: metrics.views.get(project.id) ?? 0, stars: metrics.stars.get(project.id) ?? 0 }))
+    const [metrics, savedIds] = await Promise.all([
+      getListingMetrics(listing.projects.map((project) => project.id)),
+      session ? getSavedProjectIds(db, listing.projects.map((project) => new ObjectId(project.id)), session.user.id) : Promise.resolve(null),
+    ])
+    const projects = listing.projects.map((project) => ({ ...project, views: metrics.views.get(project.id) ?? 0, stars: metrics.stars.get(project.id) ?? 0, ...(savedIds ? { saved: savedIds.has(project.id) } : {}) }))
     return Response.json({ success: true, data: { ...listing, projects, pageSize } }, { headers: { "Cache-Control": "no-store" } })
   } catch (error) {
     console.error("Project listing failed", error)
@@ -108,7 +113,10 @@ export async function POST(request: Request) {
     if (identity) {
       const existing = await projects.findOne({ _id: projectId }, { projection: { ownerId: 1, idempotencyDigest: 1 } })
       if (existing) {
-        if (existing.ownerId === session.user.id && existing.idempotencyDigest === identity.digest) return success(projectId)
+        if (existing.ownerId === session.user.id && existing.idempotencyDigest === identity.digest) {
+          await captureLegacyBaseline(mongoClient, db, projectId)
+          return success(projectId)
+        }
         return failure("This submission key was already used for a different project.", 409)
       }
     }
@@ -119,7 +127,7 @@ export async function POST(request: Request) {
     const demos = await saveProjectDemos(files)
     const now = new Date()
     try {
-      await projects.insertOne({ _id: projectId, ...project, demos, ownerId: session.user.id, createdAt: now, updatedAt: now, ...(identity ? { idempotencyDigest: identity.digest } : {}) })
+      await createInitialVersionedProject(mongoClient, db, { _id: projectId, ...project, demos, ownerId: session.user.id, createdAt: now, updatedAt: now, ...(identity ? { idempotencyDigest: identity.digest } : {}) })
     } catch (error) {
       let inserted
       try { inserted = await projects.findOne({ _id: projectId }, { projection: { ownerId: 1, idempotencyDigest: 1, demos: 1 } }) } catch {
@@ -129,10 +137,13 @@ export async function POST(request: Request) {
       if (inserted) {
         const sameAssets = Array.isArray(inserted.demos) && inserted.demos.length === demos.length && inserted.demos.every((key: unknown, index: number) => key === demos[index])
         if (!sameAssets) await cleanUpDemos(demos)
-        if (inserted.ownerId === session.user.id && (identity ? inserted.idempotencyDigest === identity.digest : sameAssets)) return success(projectId)
+        if (inserted.ownerId === session.user.id && (identity ? inserted.idempotencyDigest === identity.digest : sameAssets)) {
+          await captureLegacyBaseline(mongoClient, db, projectId)
+          return success(projectId)
+        }
         return failure("This submission key was already used for a different project.", 409)
       }
-      const definitiveFailure = typeof error === "object" && error !== null && "code" in error && (error.code === 11000 || error.code === 121)
+      const definitiveFailure = error instanceof ProjectReferenceNotFoundError || typeof error === "object" && error !== null && "code" in error && (error.code === 11000 || error.code === 121)
       if (definitiveFailure) await cleanUpDemos(demos)
       else console.error("Project insertion outcome is uncertain; uploaded demos were retained")
       throw error
@@ -140,7 +151,7 @@ export async function POST(request: Request) {
     return success(projectId)
   } catch (error) {
     if (error instanceof RequestError) return failure(error.message, error.status)
-    if (error instanceof ProjectValidationError || error instanceof ProjectStorageValidationError || error instanceof InvalidIdempotencyKeyError) return failure(error.message, 400)
+    if (error instanceof ProjectValidationError || error instanceof ProjectStorageValidationError || error instanceof InvalidIdempotencyKeyError || error instanceof ProjectReferenceNotFoundError) return failure(error.message, 400)
     if (error instanceof ProjectStorageConfigurationError) return failure(error.message, 503)
     console.error("Project publishing failed")
     return failure("Unable to publish your project right now. Please try again.", 500)

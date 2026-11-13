@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { authClient } from "@/lib/auth-client"
 
-export type HomeUser = { name: string; email: string; image?: string | null }
+export type HomeUser = { id: string; name: string; email: string; image?: string | null }
 
 export function AccountMenu({ user, avatarClassName }: { user: HomeUser; avatarClassName?: string }) {
   const router = useRouter()

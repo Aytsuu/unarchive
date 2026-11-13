@@ -20,6 +20,7 @@ test("statistics group institutions by normalized name and count all published p
       { institution: "  ", ownerId: "owner-b", createdAt: new Date("2025-12-31T23:59:59Z") },
       { institution: null, ownerId: "owner-b", createdAt: new Date("2026-12-01T00:00:00Z") },
       {},
+      { institution: "Withdrawn University", topics: ["Health"], withdrawnAt: new Date(), createdAt: new Date("2026-11-01T00:00:00Z") },
     ])
     const result = await getProjectStatistics(db, now)
     assert.equal(result.totalProjects, 6)

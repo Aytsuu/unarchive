@@ -1,11 +1,17 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { AccountMenu, type HomeUser } from "@/components/home/account-menu"
+import type { HomeUser } from "@/components/home/account-menu"
+import { HeaderActions } from "@/components/home/header-actions"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { StarIcon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProjectMetrics, type ProjectMetricsValue } from "@/components/projects/project-metrics"
 import { ProjectTopics } from "@/components/projects/project-topics"
+import { ProjectCitation } from "@/components/projects/project-citation"
+import { ProjectVersionHistory, type ProjectVersionSummary } from "@/components/projects/project-version-history"
+import type { CitationInput } from "@/lib/projects/citation"
 
 export type ProjectDetail = {
   id: string
@@ -22,6 +28,9 @@ export type ProjectDetail = {
   demoCount: number
   date: { label: string; iso: string } | null
   metrics: ProjectMetricsValue
+  citation: CitationInput
+  demoBase?: string
+  versionHistory?: { versions: ProjectVersionSummary[]; nextBefore: number | null; displayedVersion: number; latestVersion: number; canEdit: boolean }
 }
 
 function safeLink(value: string) {
@@ -46,11 +55,11 @@ function InfoCard({ title, children, className }: { title: string; children?: Re
   )
 }
 
-export function ProjectDetailView({ project, user }: { project: ProjectDetail; user: HomeUser }) {
+export function ProjectDetailView({ project, user }: { project: ProjectDetail; user: HomeUser | null }) {
   return (
     <main className="min-h-dvh bg-background pb-20 text-foreground">
       <header className="flex w-full items-center justify-between gap-4 px-5 pt-9.25 sm:pl-7.5 sm:pr-8.5">
-        <div className="flex items-center gap-5.25">
+        <div className="flex items-center gap-5.25 max-sm:gap-1">
           <Link href="/home" aria-label="Back to home" className={buttonVariants({ variant: "secondary", size: "icon" })}>
             <span aria-hidden="true" className="relative block size-5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -59,15 +68,18 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
               <img src="/publish/undo-arrow.svg" alt="" className="absolute left-[1.75px] top-[2.9px]" />
             </span>
           </Link>
-          <span className="text-xl font-medium">Project</span>
+          <span className="hidden text-xl font-medium sm:inline">Project</span>
         </div>
-        <AccountMenu user={user} />
+        <HeaderActions user={user} />
       </header>
 
       <article className="mx-auto mt-7.5 w-full max-w-360 px-5 lg:pl-21.25 lg:pr-12.5">
         <div className="flex min-h-8.75 flex-wrap items-center gap-x-4 gap-y-3">
           <ProjectTopics topics={project.topics ?? []} />
-          <div className="ml-auto"><ProjectMetrics key={project.id} projectId={project.id} initial={project.metrics} /></div>
+          <div className="ml-auto">{user ? <ProjectMetrics key={project.id} projectId={project.id} title={project.title} scope={user.id} initial={project.metrics} /> : <div className="flex items-center gap-3.25">
+            <span className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm" aria-label={`${project.metrics.views} views`}><HugeiconsIcon icon={ViewIcon} size={15} aria-hidden="true" />{project.metrics.views}</span>
+            <span className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm" aria-label={`${project.metrics.stars} stars`}><HugeiconsIcon icon={StarIcon} size={15} aria-hidden="true" />{project.metrics.stars}</span>
+          </div>}</div>
         </div>
         <div className="mt-2.75 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,439px)] lg:gap-16">
         <div className="min-w-0">
@@ -94,11 +106,13 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
           </InfoCard>}
           <InfoCard title="Demos" className="min-h-28.75">
             {project.demoCount > 0 && <div className="grid gap-4 sm:grid-cols-2">{Array.from({ length: project.demoCount }, (_, index) => (
-              // The private image endpoint serves sanitized uploads with varying dimensions.
+              // Snapshot demo endpoints serve sanitized uploads with varying dimensions.
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={index} src={`/api/projects/${project.id}/demos/${index}`} alt={`Demo ${index + 1} for ${project.title}`} className="h-auto w-full rounded-xl border border-border" loading="lazy" />
+              <img key={index} src={`${project.demoBase ?? `/api/projects/${project.id}/demos`}/${index}`} alt={`Demo ${index + 1} for ${project.title}`} className="h-auto w-full rounded-xl border border-border" loading="lazy" />
             ))}</div>}
           </InfoCard>
+          <ProjectCitation {...project.citation} />
+          {project.versionHistory && <ProjectVersionHistory projectId={project.id} {...project.versionHistory} />}
         </aside>
         </div>
       </article>

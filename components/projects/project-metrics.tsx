@@ -4,10 +4,11 @@ import { useQueryClient } from "@tanstack/react-query"
 import { StarIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { useEffect, useRef, useState } from "react"
+import { ProjectSaveButton } from "@/components/projects/project-save-button"
 
 export type ProjectMetricsValue = { views: number; stars: number; starred: boolean }
 
-export function ProjectMetrics({ projectId, initial }: { projectId: string; initial: ProjectMetricsValue }) {
+export function ProjectMetrics({ projectId, title, scope, initial }: { projectId: string; title: string; scope: string; initial: ProjectMetricsValue }) {
   const queryClient = useQueryClient()
   const [metrics, setMetrics] = useState(initial)
   const [pending, setPending] = useState(false)
@@ -57,6 +58,7 @@ export function ProjectMetrics({ projectId, initial }: { projectId: string; init
           <img src="/projects/views.svg" alt="" />
           <span aria-hidden="true">{metrics.views}</span>
         </span>
+        <ProjectSaveButton projectId={projectId} title={title} scope={scope} compact />
         <button type="button" aria-label={metrics.starred ? "Remove star from project" : "Star project"} aria-pressed={metrics.starred} disabled={pending} onClick={toggleStar} className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60">
           {metrics.starred ? (
             // eslint-disable-next-line @next/next/no-img-element

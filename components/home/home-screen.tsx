@@ -1,20 +1,20 @@
 import Link from "next/link"
-import Image from "next/image"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { StarIcon, UserGroupIcon, ViewIcon } from "@hugeicons/core-free-icons"
 import { topicStyles, TopicIcon } from "@/components/projects/topic-icon"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { AccountMenu, type HomeUser } from "@/components/home/account-menu"
+import type { HomeUser } from "@/components/home/account-menu"
+import { HeaderActions } from "@/components/home/header-actions"
 import type { ReactNode } from "react"
 import { HomeStatistics } from "@/components/home/home-statistics"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { ResponsivePageSize } from "@/components/home/responsive-page-size"
+import { ProjectSaveButton } from "@/components/projects/project-save-button"
 
-export type HomeProject = { id: string; title: string; description: string; institution: string; publisher: string; topics: string[]; views: number; stars: number; collaborators: number }
+export type HomeProject = { id: string; title: string; description: string; institution: string; publisher: string; topics: string[]; views: number; stars: number; collaborators: number; saved?: boolean }
 
-function ProjectCard({ project }: { project: HomeProject }) {
+function ProjectCard({ project, scope }: { project: HomeProject; scope: string }) {
   return (
     <Card className="min-h-86.75 gap-0 rounded-[20px] border border-border p-5 ring-0">
         <div className="min-w-0">
@@ -31,12 +31,15 @@ function ProjectCard({ project }: { project: HomeProject }) {
           <span className="inline-flex items-center gap-1" aria-label={`${project.stars} stars`}><HugeiconsIcon icon={StarIcon} size={15} aria-hidden="true" />{project.stars}</span>
           <span className="inline-flex items-center gap-1" aria-label={`${project.collaborators} collaborators including publisher`}><HugeiconsIcon icon={UserGroupIcon} size={15} aria-hidden="true" />{project.collaborators}</span>
         </div>
-        <Link href={`/projects/${project.id}`} aria-label={`Read ${project.title}`} className={buttonVariants({ className: "mt-6 w-22.25 self-end" })}>Read</Link>
+        <div className="mt-6 flex items-start justify-end gap-2">
+          {scope !== "guest" && <ProjectSaveButton projectId={project.id} title={project.title} scope={scope} initialSaved={project.saved} />}
+          <Link href={`/projects/${project.id}`} aria-label={`Read ${project.title}`} className={buttonVariants({ className: "w-22.25" })}>Read</Link>
+        </div>
     </Card>
   )
 }
 
-export function ProjectListing({ user, projects, total, search, page, pageSize }: { user: HomeUser | null; projects: HomeProject[]; total: number; search: string; page: number; pageSize: number }) {
+export function ProjectListing({ projects, total, search, page, pageSize, scope }: { projects: HomeProject[]; total: number; search: string; page: number; pageSize: number; scope: string }) {
   const pages = Math.max(1, Math.ceil(total / pageSize))
   function pageHref(target: number) {
     const params = new URLSearchParams({ page: String(target), size: String(pageSize) })
@@ -47,25 +50,16 @@ export function ProjectListing({ user, projects, total, search, page, pageSize }
         <section aria-labelledby="projects-heading" className="mt-14">
           <h2 id="projects-heading" className="text-base font-medium leading-5">Projects</h2>
           {search && <p className="mt-2 text-sm text-muted-foreground">Results for “{search}” · <Link href="/home" className="underline underline-offset-4">Clear search</Link></p>}
-          <div className={`relative mt-3.75 ${!user ? "min-h-115" : ""}`}>
+          <div className="mt-3.75">
             <div className="grid grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {projects.map((project) => <ProjectCard key={project.id} project={project} />)}
+              {projects.map((project) => <ProjectCard key={project.id} project={project} scope={scope} />)}
             </div>
             {projects.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">{search ? "No projects match your search." : "No projects have been published yet."}</p>}
-            {user && pages > 1 && <nav aria-label="Project pagination" className="mt-6 flex items-center justify-center gap-4">
+            {pages > 1 && <nav aria-label="Project pagination" className="mt-6 flex items-center justify-center gap-4">
               {page > 1 ? <Link href={pageHref(page - 1)} className={buttonVariants({ variant: "outline" })}>Previous</Link> : <Button variant="outline" disabled>Previous</Button>}
               <span className="text-sm text-muted-foreground" aria-live="polite">Page {page} of {pages}</span>
               {page < pages ? <Link href={pageHref(page + 1)} className={buttonVariants({ variant: "outline" })}>Next</Link> : <Button variant="outline" disabled>Next</Button>}
             </nav>}
-            {!user && (
-              <div className="absolute inset-x-0 top-30 bottom-0 flex flex-col items-center bg-background/90 px-5 pt-33 text-center backdrop-blur-[2px]">
-                <p className="text-sm font-medium leading-normal">Sign in to your account to continue<br className="hidden sm:block" /> browsing and publish your work.</p>
-                <div className="mt-7.5 flex gap-2.25">
-                  <Link href="/login" className={buttonVariants({ variant: "secondary", className: "w-[119px]" })}>Log in</Link>
-                  <Link href="/signup" className={buttonVariants({ className: "w-[119px]" })}>Get Started</Link>
-                </div>
-              </div>
-            )}
           </div>
         </section>
   )
@@ -74,25 +68,10 @@ export function ProjectListing({ user, projects, total, search, page, pageSize }
 export function HomeScreen({ user, pageSize, searchControl, topicsContent, children }: { user: HomeUser | null; pageSize: number; searchControl: ReactNode; topicsContent: ReactNode; children: ReactNode }) {
   return (
     <main className="min-h-dvh bg-background pb-16 text-foreground">
-      {user && <ResponsivePageSize pageSize={pageSize} />}
+      <ResponsivePageSize pageSize={pageSize} />
       <header className="flex items-center justify-between gap-2 px-3 pt-9.25 sm:gap-4 sm:pl-11.5 sm:pr-8.5">
         <Link href="/home" className="text-base font-medium sm:text-xl"><BrandLogo compactOnSmallScreens /></Link>
-        <div className="flex items-center gap-1 sm:gap-3">
-          {user && <Link href="/publish" className={buttonVariants({ className: "gap-2.5 max-sm:px-2" })}><Image src="/assets/icons/publish/archive.svg" alt="" width={16} height={16} className="brightness-0 invert" />Publish</Link>}
-          {searchControl}
-          {user && <Popover>
-            <PopoverTrigger render={<Button type="button" variant="outline" size="icon" aria-label="Notifications" />}>
-              <span aria-hidden="true" className="flex size-6 items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/icons/notification.svg" alt="" className="h-4 w-auto" />
-              </span>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-64">
-              <p className="text-sm text-muted-foreground">Notifications are coming soon.</p>
-            </PopoverContent>
-          </Popover>}
-          {user ? <AccountMenu user={user} avatarClassName="size-9" /> : <span className={buttonVariants({ variant: "secondary", size: "sm", className: "w-[75px]" })}>Guest</span>}
-        </div>
+        <HeaderActions user={user} searchControl={searchControl} />
       </header>
 
       <div className="mx-auto mt-12.75 w-full max-w-341.5 px-5 sm:px-5">

@@ -1,6 +1,7 @@
 import { PROJECT_TOPICS } from "../project-topics.mjs"
 
 export type ProjectInput = {
+  projectType: "thesis"
   title: string
   description: string
   abstract?: string
@@ -49,6 +50,8 @@ function referenceIds(value: unknown): string[] {
 export function parseProject(value: unknown): ProjectInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ProjectValidationError("Invalid project details.")
   const data = value as Record<string, unknown>
+  if (data.projectType !== undefined && data.projectType !== "thesis") throw new ProjectValidationError("Choose a valid project type.")
+  const projectType = "thesis" as const
   const title = textValue(data.title, "Title", 200, true)
   const description = textValue(data.description, "Description", 5000)
   const abstract = textValue(data.abstract, "Abstract", 10000)
@@ -73,5 +76,5 @@ export function parseProject(value: unknown): ProjectInput {
   if (!consents || typeof consents !== "object" || Array.isArray(consents) || !("permission" in consents) || !("contributorsPermission" in consents) || !("detailsAccurate" in consents) || !("universityIp" in consents) || consents.permission !== true || consents.contributorsPermission !== true || consents.detailsAccurate !== true || consents.universityIp !== true) {
     throw new ProjectValidationError("Please confirm all consents before publishing.")
   }
-  return { title, description, institution, links, contributors, consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true }, ...(abstract ? { abstract } : {}), ...(dateStarted ? { dateStarted } : {}), ...(dateEnded ? { dateEnded } : {}), ...(uniqueTopics.length ? { topics: uniqueTopics } : {}), ...(referenceProjectIds.length ? { referenceProjectIds } : {}) }
+  return { projectType, title, description, institution, links, contributors, consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true }, ...(abstract ? { abstract } : {}), ...(dateStarted ? { dateStarted } : {}), ...(dateEnded ? { dateEnded } : {}), ...(uniqueTopics.length ? { topics: uniqueTopics } : {}), ...(referenceProjectIds.length ? { referenceProjectIds } : {}) }
 }

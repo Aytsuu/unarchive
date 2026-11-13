@@ -14,7 +14,7 @@ export function parseReferenceQuery(value: string | null): string | null {
 
 export async function searchReferenceProjects(db: Db, query: string) {
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const filter = escaped ? { title: { $regex: escaped, $options: "i" } } : {}
+  const filter = escaped ? { withdrawnAt: { $exists: false }, title: { $regex: escaped, $options: "i" } } : { withdrawnAt: { $exists: false } }
   const records = await db.collection<ProjectTitle>("projects")
     .find(filter, { projection: { title: 1 }, maxTimeMS: 3000 })
     .sort({ createdAt: -1, _id: -1 }).limit(20).toArray()

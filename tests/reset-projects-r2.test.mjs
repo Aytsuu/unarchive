@@ -8,6 +8,7 @@ import { deleteDemosFromR2, resetProjectData } from "../scripts/reset-projects.m
 const uri = process.env.MONGODB_URI
 const firstKey = "projects/11111111-1111-4111-8111-111111111111.png"
 const secondKey = "projects/22222222-2222-4222-8222-222222222222.jpg"
+const historicalKey = "projects/33333333-3333-4333-8333-333333333333.png"
 
 test("R2 deletion uses only project keys in the configured bucket and closes the client", async () => {
   const environment = {
@@ -53,6 +54,8 @@ test("R2 reset deduplicates referenced assets and leaves records intact on failu
     await projects.insertMany([{ demos: [firstKey, secondKey] }, { demos: [firstKey] }, { title: "No images" }])
     await db.collection("projectViews").insertOne({ marker: true })
     await db.collection("projectStars").insertOne({ marker: true })
+    const versions = db.collection("projectVersions")
+    await versions.insertMany([{ snapshot: { demos: [historicalKey, firstKey] } }, { snapshot: { demos: [historicalKey] } }])
 
     let attempts = 0
     await assert.rejects(resetProjectData(db, undefined, async () => { attempts++; throw new Error("R2 unavailable") }))
@@ -60,11 +63,13 @@ test("R2 reset deduplicates referenced assets and leaves records intact on failu
     assert.equal(await projects.countDocuments(), 3, "failed R2 cleanup must preserve project keys for retry")
     assert.equal(await db.collection("projectViews").countDocuments(), 1)
     assert.equal(await db.collection("projectStars").countDocuments(), 1)
+    assert.equal(await versions.countDocuments(), 2, "failed R2 cleanup preserves version records")
 
     const keys = []
     await resetProjectData(db, undefined, async (batch) => { keys.push(...batch) })
-    assert.deepEqual([...keys].sort(), [firstKey, secondKey].sort(), "each referenced key is deleted once")
+    assert.deepEqual([...keys].sort(), [firstKey, secondKey, historicalKey].sort(), "current and historical referenced keys are deleted once")
     assert.equal(await projects.countDocuments(), 0)
+    assert.equal(await versions.countDocuments(), 0, "version records are deleted")
 
     await projects.insertOne({ demos: [firstKey], title: "Snapshot project" })
     await db.collection("projectViews").insertOne({ marker: "snapshot" })
@@ -81,6 +86,15 @@ test("R2 reset deduplicates referenced assets and leaves records intact on failu
     await projects.insertOne({ title: "No images" })
     await resetProjectData(db, undefined, async () => { calls++ })
     assert.equal(calls, 0, "projects without images do not contact R2")
+
+    for (const invalid of [{}, { snapshot: null }, { snapshot: {} }, { snapshot: { demos: null } }, { snapshot: { demos: ["unrelated/object.png"] } }]) {
+      await versions.insertOne(invalid)
+      let invalidVersionCalls = 0
+      await assert.rejects(resetProjectData(db, undefined, async () => { invalidVersionCalls++ }))
+      assert.equal(invalidVersionCalls, 0, "invalid historical data must fail before contacting R2")
+      assert.equal(await versions.countDocuments(), 1, "invalid historical record must remain for inspection")
+      await versions.deleteMany({})
+    }
 
     for (const demos of [["unrelated/object.png"], [7], "not-an-array", null]) {
       await projects.insertOne({ demos })

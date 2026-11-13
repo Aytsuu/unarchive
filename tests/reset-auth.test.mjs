@@ -13,7 +13,7 @@ test("only accepts a named local MongoDB target", () => {
 })
 
 test("deletes auth collections and leaves other collections untouched", async () => {
-  const records = Object.fromEntries(["user", "account", "session", "verification", "verificationResendCooldown", "rateLimit", "other"].map(name => [name, [1, 2]]))
+  const records = Object.fromEntries(["user", "account", "session", "verification", "verificationResendCooldown", "rateLimit", "projectSaves", "other"].map(name => [name, [1, 2]]))
   const db = { collection: name => ({ deleteMany: async query => {
     assert.deepEqual(query, {})
     const deletedCount = records[name].length
@@ -21,7 +21,7 @@ test("deletes auth collections and leaves other collections untouched", async ()
     return { deletedCount }
   } }) }
   const result = await deleteAuthRecords(db)
-  assert.equal(result.length, 6)
+  assert.equal(result.length, 7)
   assert.ok(result.every(item => item.deletedCount === 2))
   assert.deepEqual(records.other, [1, 2])
 })

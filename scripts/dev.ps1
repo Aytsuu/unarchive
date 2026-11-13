@@ -48,6 +48,15 @@ try {
     & docker compose --env-file .env.local up -d mongodb
     if ($LASTEXITCODE -ne 0) { throw 'MongoDB failed to start.' }
 
+    Write-Host 'Initializing MongoDB replica set if needed...'
+    $deadline = (Get-Date).AddSeconds(90)
+    do {
+        & cmd.exe /c 'docker compose --env-file .env.local exec -T mongodb mongosh --quiet --host 127.0.0.1 --file /opt/unarchive/mongo-init-replica.js 2>nul'
+        if ($LASTEXITCODE -eq 0) { break }
+        Start-Sleep -Seconds 2
+    } while ((Get-Date) -lt $deadline)
+    if ($LASTEXITCODE -ne 0) { throw 'MongoDB replica set did not become ready. Check MongoDB logs and the configured root credentials.' }
+
     Write-Host 'Installing npm dependencies...'
     & npm.cmd install --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) { throw 'npm install failed.' }

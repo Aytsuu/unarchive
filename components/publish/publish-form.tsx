@@ -93,6 +93,7 @@ export function PublishForm() {
 
     const body = new FormData()
     body.set("project", JSON.stringify({
+      projectType: "thesis",
       title: title.trim(),
       description: description.trim(),
       abstract: abstract.trim(),

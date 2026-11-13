@@ -12,11 +12,11 @@ async function HomeContent({ searchParams }: { searchParams: Promise<{ q?: strin
   await connection()
   const [requestHeaders, query] = await Promise.all([headers(), searchParams])
   const session = await auth.api.getSession({ headers: requestHeaders })
-  const user = session?.user ? { name: session.user.name, email: session.user.email, image: session.user.image } : null
+  const user = session?.user ? { id: session.user.id, name: session.user.name, email: session.user.email, image: session.user.image } : null
   const params = new URLSearchParams()
   for (const name of ["q", "page", "size"] as const) if (typeof query[name] === "string") params.set(name, query[name])
-  const { search, page, pageSize } = parseListingParams(params, !!user)
-  const args = { search, page, pageSize, user, scope: session?.user?.id ?? "guest" }
+  const { search, page, pageSize } = parseListingParams(params)
+  const args = { search, page, pageSize, scope: session?.user?.id ?? "guest" }
   return <HomeScreen user={user} pageSize={pageSize} searchControl={<ProjectSearchQuery {...args} />} topicsContent={<ProjectTopicsQuery {...args} />}>
     <ProjectListingQuery {...args} />
   </HomeScreen>

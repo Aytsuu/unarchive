@@ -7,7 +7,7 @@ export function metricsError(error: string, status: number, headers?: Record<str
   return Response.json({ success: false, error }, { status, headers: { "Cache-Control": "no-store", ...headers } })
 }
 
-export async function authorizeMetricsWrite(request: Request, id: string, action: "view" | "star") {
+export async function authorizeMetricsWrite(request: Request, id: string, action: "view" | "star" | "save") {
   if (!/^[a-f\d]{24}$/i.test(id)) return { response: metricsError("Project not found.", 404) }
   let expectedOrigin: string
   try { expectedOrigin = new URL(process.env.BETTER_AUTH_URL ?? request.url).origin } catch { return { response: metricsError("Project metrics are temporarily unavailable.", 503) } }
@@ -15,7 +15,7 @@ export async function authorizeMetricsWrite(request: Request, id: string, action
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return { response: metricsError("Please sign in to continue.", 401) }
   const projectId = new ObjectId(id)
-  const exists = await db.collection("projects").findOne({ _id: projectId }, { projection: { _id: 1 }, maxTimeMS: 3000 })
+  const exists = await db.collection("projects").findOne({ _id: projectId, withdrawnAt: { $exists: false } }, { projection: { _id: 1 }, maxTimeMS: 3000 })
   if (!exists) return { response: metricsError("Project not found.", 404) }
   const retryAfter = await claimMetricsAttempt(db, session.user.id, action)
   if (retryAfter) return { response: metricsError("Too many requests. Please try again later.", 429, { "Retry-After": String(retryAfter) }) }

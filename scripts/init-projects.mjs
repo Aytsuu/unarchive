@@ -11,6 +11,9 @@ const projectValidator = {
     properties: {
       ownerId: { bsonType: "string", minLength: 1, description: "Better Auth user ID" },
       title: { bsonType: "string", minLength: 1 },
+      projectType: { bsonType: "string", enum: ["thesis"] },
+      // Kept for legacy records; new citation years come from dateEnded.
+      completionYear: { bsonType: "string", pattern: "^(?!0000)[0-9]{4}$" },
       description: { bsonType: "string" },
       abstract: { bsonType: "string", maxLength: 10000 },
       topics: { bsonType: "array", maxItems: PROJECT_TOPICS.length, uniqueItems: true, items: { bsonType: "string", enum: [...PROJECT_TOPICS] } },

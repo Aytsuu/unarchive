@@ -20,6 +20,7 @@ test("project lookup limits results, searches literal titles, and rate limits pe
     await db.collection("projects").insertMany([
       ...Array.from({ length: 22 }, (_, index) => ({ title: `Project ${index}`, createdAt: new Date(2024, 0, index + 1), privateValue: "not exposed" })),
       { title: "Literal [example]", createdAt: new Date(2025, 0, 1), privateValue: "not exposed" },
+      { title: "Withdrawn [example]", withdrawnAt: new Date(), createdAt: new Date(2026, 0, 1) },
     ])
     const results = await searchReferenceProjects(db, "")
     assert.equal(results.length, 20)
@@ -27,6 +28,7 @@ test("project lookup limits results, searches literal titles, and rate limits pe
     const literal = await searchReferenceProjects(db, "[example]")
     assert.equal(literal.length, 1)
     assert.equal(literal[0].title, "Literal [example]")
+    assert.deepEqual(await searchReferenceProjects(db, "Withdrawn"), [])
     const attempts = await Promise.all(Array.from({ length: 121 }, () => claimReferenceSearch(db, "account-a")))
     assert.equal(attempts.filter(Boolean).length, 1)
     assert.equal(await claimReferenceSearch(db, "account-b"), 0)

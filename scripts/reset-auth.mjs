@@ -4,7 +4,7 @@ import { stdin, stdout } from "node:process"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
-const collections = ["session", "account", "verification", "verificationResendCooldown", "rateLimit", "user"]
+const collections = ["session", "account", "verification", "verificationResendCooldown", "rateLimit", "projectSaves", "user"]
 
 export function validateLocalTarget(uri, database) {
   let target
@@ -36,7 +36,7 @@ async function main() {
     process.exitCode = 1
     return
   }
-  console.log(`This permanently deletes all authentication records in local database "${database}".`)
+  console.log(`This permanently deletes all authentication records and saved-project associations in local database "${database}".`)
   console.log(`Collections: ${collections.join(", ")}`)
   console.log("Stop the app before continuing, but leave MongoDB running.")
   const prompt = createInterface({ input: stdin, output: stdout })

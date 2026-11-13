@@ -10,7 +10,7 @@ test("reset requires confirmation and removes only authentication records", asyn
   const uri = process.env.MONGODB_URI
   validateLocalTarget(uri, database)
   const client = new MongoClient(uri, { directConnection: true, serverSelectionTimeoutMS: 5000 })
-  const names = ["session", "account", "verification", "verificationResendCooldown", "rateLimit", "user"]
+  const names = ["session", "account", "verification", "verificationResendCooldown", "rateLimit", "projectSaves", "user"]
   try {
     await client.connect()
     const db = client.db(database)

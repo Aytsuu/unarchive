@@ -31,6 +31,7 @@ export async function getProjectStatistics(db: Db, now = new Date()): Promise<Pr
     monthly: OwnerCount[]
     annually: OwnerCount[]
   }>([
+    { $match: { withdrawnAt: { $exists: false } } },
     { $facet: {
       totals: [{ $count: "count" }],
       institutions: [

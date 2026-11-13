@@ -10,7 +10,7 @@ export async function getProjectListing(search: string, requestedPage: number, p
   "use cache"
   cacheLife({ stale: 30, revalidate: 60, expire: 300 })
   cacheTag(PROJECT_LIST_TAG)
-  const filter = search ? { title: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } } : {}
+  const filter = search ? { withdrawnAt: { $exists: false }, title: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } } : { withdrawnAt: { $exists: false } }
   const collection = db.collection<ProjectRecord>("projects")
   const total = await collection.countDocuments(filter, { maxTimeMS: 3000 })
   const page = Math.min(Math.max(1, requestedPage), Math.max(1, Math.ceil(total / pageSize)))
