@@ -1,7 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Button } from "@/components/ui/button"
+import { cn } from "cn"
+import { Button, buttonVariants } from "@/components/ui/button"
 
 type SavePayload = { data?: { saved?: unknown } }
 
@@ -12,7 +14,24 @@ async function readSaved(response: Response): Promise<boolean> {
   return payload.data.saved
 }
 
+function SaveGlyph({ saved }: { saved: boolean }) {
+  return <span aria-hidden="true" className={`block h-3.5 w-3 bg-current mask-contain mask-center mask-no-repeat ${saved ? "text-[#FFE100] mask-[url('/assets/icons/bookmark-save-filled.svg')]" : "mask-[url('/assets/icons/bookmark-save.svg')] text-foreground"}`} />
+}
+
+function GuestSaveLink({ title, compact }: { title: string; compact: boolean }) {
+  return (
+    <Link href="/login" aria-label={`Save ${title}`} title={`Save ${title}`} className={cn(buttonVariants({ size: compact ? "icon-xs" : "icon", variant: "outline" }), compact ? "size-7 border border-border" : "border-border")}>
+      <SaveGlyph saved={false} />
+    </Link>
+  )
+}
+
 export function ProjectSaveButton({ projectId, title, scope, initialSaved, compact = false }: { projectId: string; title: string; scope: string; initialSaved?: boolean; compact?: boolean }) {
+  if (scope === "guest") return <GuestSaveLink title={title} compact={compact} />
+  return <AuthenticatedSaveButton projectId={projectId} title={title} scope={scope} initialSaved={initialSaved} compact={compact} />
+}
+
+function AuthenticatedSaveButton({ projectId, title, scope, initialSaved, compact }: { projectId: string; title: string; scope: string; initialSaved?: boolean; compact: boolean }) {
   const queryClient = useQueryClient()
   const key = ["project-saved", scope, projectId] as const
   const query = useQuery({
@@ -38,12 +57,9 @@ export function ProjectSaveButton({ projectId, title, scope, initialSaved, compa
   })
   const saved = query.data === true
   const label = query.isError ? `Retry loading saved status for ${title}` : saved ? `Remove ${title} from saved projects` : `Save ${title}`
-  const iconClass = saved && !compact
-    ? "text-[#FFE100] mask-[url('/assets/icons/bookmark-save-filled.svg')]"
-    : `mask-[url('/assets/icons/bookmark-save.svg')] ${saved ? "text-primary" : "text-foreground"}`
   return <span className="inline-flex flex-col items-end gap-1">
     <Button type="button" size={compact ? "icon-xs" : "icon"} variant={saved ? "secondary" : "outline"} aria-label={label} aria-pressed={saved} title={label} disabled={query.isPending || mutation.isPending} onClick={() => query.isError ? void query.refetch() : mutation.mutate(saved)} className={compact ? "size-7 border border-border" : "border-border"}>
-      <span aria-hidden="true" className={`block h-3.5 w-3 bg-current mask-contain mask-center mask-no-repeat ${iconClass}`} />
+      <SaveGlyph saved={saved} />
     </Button>
     {(query.isError || mutation.isError) && <span role="alert" className="max-w-40 text-right text-xs text-destructive">Could not update saved project.</span>}
   </span>

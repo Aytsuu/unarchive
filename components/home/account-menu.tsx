@@ -7,6 +7,7 @@ import { useState } from "react"
 import { cn } from "cn"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { authClient } from "@/lib/auth-client"
 
 export type HomeUser = { id: string; name: string; email: string; image?: string | null }
@@ -36,17 +37,20 @@ export function AccountMenu({ user, avatarClassName }: { user: HomeUser; avatarC
   return (
     <div className="flex items-center">
       <DropdownMenu>
-        <DropdownMenuTrigger aria-label="Account menu" className="inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-          <Avatar className={cn("after:border-0", avatarClassName)}>
-            {user.image && <AvatarImage src={user.image} alt="" />}
-            <AvatarFallback>
-              <span aria-hidden="true" className="flex size-6 items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/icons/user.svg" alt="" className="h-4 w-auto" />
-              </span>
-            </AvatarFallback>
-          </Avatar>
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger render={<DropdownMenuTrigger aria-label="Account menu" className="inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />}>
+            <Avatar className={cn("after:border-0", avatarClassName)}>
+              {user.image && <AvatarImage src={user.image} alt="" />}
+              <AvatarFallback>
+                <span aria-hidden="true" className="flex size-6 items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/assets/icons/user.svg" alt="" className="h-4 w-auto" />
+                </span>
+              </AvatarFallback>
+            </Avatar>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Account</TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
             <DropdownMenuLabel>My account</DropdownMenuLabel>

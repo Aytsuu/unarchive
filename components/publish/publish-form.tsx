@@ -31,15 +31,13 @@ export function PublishForm() {
   const [dateEnded, setDateEnded] = useState("")
   const [contributors, setContributors] = useState<RepeatableField[]>([])
   const [referenceProjects, setReferenceProjects] = useState<ReferenceProject[]>([])
-  const [permission, setPermission] = useState(false)
-  const [contributorsPermission, setContributorsPermission] = useState(false)
-  const [detailsAccurate, setDetailsAccurate] = useState(false)
-  const [universityIp, setUniversityIp] = useState(false)
+  const [publishRights, setPublishRights] = useState(false)
+  const [contributorAccuracy, setContributorAccuracy] = useState(false)
   const [status, setStatus] = useState("")
   const [pending, setPending] = useState(false)
   const pendingRef = useRef(false)
   const submissionId = useRef<string | null>(null)
-  const missingRequired = (step === 1 && !title.trim()) || (step === 3 && (!permission || !contributorsPermission || !detailsAccurate || !universityIp))
+  const missingRequired = (step === 1 && !title.trim()) || (step === 3 && (!publishRights || !contributorAccuracy))
 
   function addContributor() {
     const id = nextFieldId.current++
@@ -104,7 +102,7 @@ export function PublishForm() {
       dateEnded,
       contributors: contributors.map(({ value }) => value.trim()).filter(Boolean),
       referenceProjectIds: referenceProjects.map((project) => project.id),
-      consents: { permission, contributorsPermission, detailsAccurate, universityIp },
+      consents: { permission: true, contributorsPermission: true, detailsAccurate: true, universityIp: true },
     }))
     for (const photo of photos) body.append("demos", photo)
     pendingRef.current = true
@@ -214,7 +212,7 @@ export function PublishForm() {
         ) : step === 2 ? (
           <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateStarted={dateStarted} dateEnded={dateEnded} onDateStartedChange={setDateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={addContributor} onContributorsChange={setContributors} referenceProjects={referenceProjects} onReferenceProjectsChange={setReferenceProjects} />
         ) : (
-          <PublishConsents permission={permission} contributorsPermission={contributorsPermission} detailsAccurate={detailsAccurate} universityIp={universityIp} onPermissionChange={setPermission} onContributorsPermissionChange={setContributorsPermission} onDetailsAccurateChange={setDetailsAccurate} onUniversityIpChange={setUniversityIp} disabled={pending} />
+          <PublishConsents publishRights={publishRights} contributorAccuracy={contributorAccuracy} onPublishRightsChange={setPublishRights} onContributorAccuracyChange={setContributorAccuracy} disabled={pending} />
         )}
       </section>
     </main>

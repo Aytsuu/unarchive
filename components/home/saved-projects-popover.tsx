@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 type SavedPage = { projects: { id: string; title: string }[]; nextCursor: string | null }
 
@@ -31,12 +32,15 @@ export function SavedProjectsPopover({ scope }: { scope: string }) {
   const projects = query.data?.pages.flatMap((page) => page.projects) ?? []
 
   return <Popover open={open} onOpenChange={setOpen}>
-    <PopoverTrigger render={<Button type="button" variant="outline" size="icon" aria-label="Saved projects" />}>
-      <span className="flex size-4 items-center justify-center" aria-hidden="true">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/icons/bookmark-save.svg" alt="" className="h-3.5 w-auto" />
-      </span>
-    </PopoverTrigger>
+    <Tooltip>
+      <PopoverTrigger render={<TooltipTrigger render={<Button type="button" variant="outline" size="icon" aria-label="Saved projects" />} />}>
+        <span className="flex size-4 items-center justify-center" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/icons/bookmark-save.svg" alt="" className="h-3.5 w-auto" />
+        </span>
+      </PopoverTrigger>
+      <TooltipContent side="bottom">Saved</TooltipContent>
+    </Tooltip>
     <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-4">
       <PopoverTitle>Saved projects</PopoverTitle>
       <div className="mt-3 max-h-80 overflow-y-auto text-sm">

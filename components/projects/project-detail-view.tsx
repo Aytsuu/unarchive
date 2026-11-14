@@ -8,6 +8,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { StarIcon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProjectMetrics, type ProjectMetricsValue } from "@/components/projects/project-metrics"
+import { ProjectSaveButton } from "@/components/projects/project-save-button"
 import { ProjectTopics } from "@/components/projects/project-topics"
 import { ProjectCitation } from "@/components/projects/project-citation"
 import { ProjectVersionHistory, type ProjectVersionSummary } from "@/components/projects/project-version-history"
@@ -31,6 +32,7 @@ export type ProjectDetail = {
   citation: CitationInput
   demoBase?: string
   versionHistory?: { versions: ProjectVersionSummary[]; nextBefore: number | null; displayedVersion: number; latestVersion: number; canEdit: boolean }
+  canPropose: boolean
 }
 
 function safeLink(value: string) {
@@ -56,6 +58,7 @@ function InfoCard({ title, children, className }: { title: string; children?: Re
 }
 
 export function ProjectDetailView({ project, user }: { project: ProjectDetail; user: HomeUser | null }) {
+  const propose = !user || project.canPropose ? <Link href={user ? `/projects/${project.id}/submit-proposal` : "/login"} className={buttonVariants()}>Submit a Proposal</Link> : null
   return (
     <main className="min-h-dvh bg-background pb-20 text-foreground">
       <header className="flex w-full items-center justify-between gap-4 px-5 pt-9.25 sm:pl-7.5 sm:pr-8.5">
@@ -76,9 +79,11 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
       <article className="mx-auto mt-7.5 w-full max-w-360 px-5 lg:pl-21.25 lg:pr-12.5">
         <div className="flex min-h-8.75 flex-wrap items-center gap-x-4 gap-y-3">
           <ProjectTopics topics={project.topics ?? []} />
-          <div className="ml-auto">{user ? <ProjectMetrics key={project.id} projectId={project.id} title={project.title} scope={user.id} initial={project.metrics} /> : <div className="flex items-center gap-3.25">
+          <div className="ml-auto">{user ? <ProjectMetrics key={project.id} projectId={project.id} title={project.title} scope={user.id} initial={project.metrics} trailing={propose} /> : <div className="flex flex-wrap items-center justify-end gap-3.25">
             <span className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm" aria-label={`${project.metrics.views} views`}><HugeiconsIcon icon={ViewIcon} size={15} aria-hidden="true" />{project.metrics.views}</span>
             <span className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm" aria-label={`${project.metrics.stars} stars`}><HugeiconsIcon icon={StarIcon} size={15} aria-hidden="true" />{project.metrics.stars}</span>
+            <ProjectSaveButton projectId={project.id} title={project.title} scope="guest" compact />
+            {propose}
           </div>}</div>
         </div>
         <div className="mt-2.75 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,439px)] lg:gap-16">

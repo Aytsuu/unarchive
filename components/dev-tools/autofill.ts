@@ -37,11 +37,18 @@ export function hasAutofillFields() {
   return controls().some((element) => !(element instanceof HTMLInputElement && element.type === "hidden"))
 }
 
+function associatedLabels(element: AutofillControl) {
+  if ("labels" in element && element.labels) {
+    return Array.from(element.labels as ArrayLike<HTMLLabelElement>).map((label) => label.textContent ?? "")
+  }
+  if (!element.id) return []
+  const id = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(element.id) : element.id.replaceAll('"', '\\"')
+  return Array.from(document.querySelectorAll<HTMLLabelElement>(`label[for="${id}"]`)).map((label) => label.textContent ?? "")
+}
+
 function names(element: AutofillControl) {
-  const labels = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement
-    ? Array.from(element.labels ?? []).map((label) => label.textContent ?? "") : []
   const labelled = (element.getAttribute("aria-labelledby") ?? "").split(/\s+/).map((id) => document.getElementById(id)?.textContent ?? "")
-  return [element.getAttribute("aria-label") ?? "", ...labelled, ...labels,
+  return [element.getAttribute("aria-label") ?? "", ...labelled, ...associatedLabels(element),
     element.getAttribute("name") ?? "", element.id.replace(/^(signup|login)-/, ""), element.getAttribute("placeholder") ?? ""].map(normalize).filter(Boolean)
 }
 

@@ -2,7 +2,7 @@ import "server-only"
 import { randomUUID } from "node:crypto"
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import sharp from "sharp"
-import { PROJECT_DEMO_KEY_PATTERN } from "./project-storage-keys.mjs"
+import { PROJECT_DEMO_KEY_PATTERN, PROJECT_PROPOSAL_KEY_PATTERN } from "./project-storage-keys.mjs"
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 5
@@ -30,30 +30,46 @@ async function prepareImage(file: File) {
 }
 
 export function createProjectStorage(client: StorageClient, bucket: string) {
-  async function deleteProjectDemos(keys: string[]) {
-    if (keys.some((key) => !PROJECT_DEMO_KEY_PATTERN.test(key))) throw new Error("Invalid project asset key")
+  async function deleteKeys(keys: string[], pattern: RegExp, invalid: string, failed: string) {
+    if (keys.some((key) => !pattern.test(key))) throw new Error(invalid)
     let failure = false
     for (const key of keys) {
       try { await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })) } catch { failure = true }
     }
-    if (failure) throw new Error("Project asset cleanup failed")
+    if (failure) throw new Error(failed)
   }
 
-  async function saveProjectDemos(files: File[]) {
-    if (files.length > MAX_IMAGES) throw new ProjectStorageValidationError("You can upload up to 5 demo images.")
+  async function deleteProjectDemos(keys: string[]) {
+    await deleteKeys(keys, PROJECT_DEMO_KEY_PATTERN, "Invalid project asset key", "Project asset cleanup failed")
+  }
+
+  async function deleteProposalAttachments(keys: string[]) {
+    await deleteKeys(keys, PROJECT_PROPOSAL_KEY_PATTERN, "Invalid proposal asset key", "Proposal asset cleanup failed")
+  }
+
+  async function saveImages(files: File[], prefix: "projects" | "proposals", tooMany: string, cleanup: (keys: string[]) => Promise<void>) {
+    if (files.length > MAX_IMAGES) throw new ProjectStorageValidationError(tooMany)
     const saved: string[] = []
     try {
       for (const file of files) {
         const image = await prepareImage(file)
-        const key = `projects/${randomUUID()}.${image.extension}`
+        const key = `${prefix}/${randomUUID()}.${image.extension}`
         saved.push(key)
         await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: image.body, ContentType: image.contentType }))
       }
     } catch (error) {
-      try { await deleteProjectDemos(saved) } catch { console.error("Failed to clean up project images after an upload error") }
+      try { await cleanup(saved) } catch { console.error("Failed to clean up project images after an upload error") }
       throw error
     }
     return saved
+  }
+
+  async function saveProjectDemos(files: File[]) {
+    return saveImages(files, "projects", "You can upload up to 5 demo images.", deleteProjectDemos)
+  }
+
+  async function saveProposalAttachments(files: File[]) {
+    return saveImages(files, "proposals", "You can upload up to 5 demo images.", deleteProposalAttachments)
   }
 
   async function getProjectDemo(key: string) {
@@ -71,7 +87,7 @@ export function createProjectStorage(client: StorageClient, bucket: string) {
     return { stream, contentType: key.endsWith(".png") ? "image/png" : "image/jpeg" }
   }
 
-  return { saveProjectDemos, deleteProjectDemos, getProjectDemo }
+  return { saveProjectDemos, deleteProjectDemos, saveProposalAttachments, deleteProposalAttachments, getProjectDemo }
 }
 
 function getStorage() {
@@ -89,6 +105,14 @@ export async function saveProjectDemos(files: File[]) {
 
 export async function deleteProjectDemos(keys: string[]) {
   if (keys.length) await getStorage().deleteProjectDemos(keys)
+}
+
+export async function saveProposalAttachments(files: File[]) {
+  return files.length ? getStorage().saveProposalAttachments(files) : []
+}
+
+export async function deleteProposalAttachments(keys: string[]) {
+  if (keys.length) await getStorage().deleteProposalAttachments(keys)
 }
 
 export async function getProjectDemo(key: string) {

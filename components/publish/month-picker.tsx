@@ -31,7 +31,7 @@ export function MonthPicker({ id, label, value, min, onChange }: { id: string; l
     setOpen(next)
   }
 
-  const display = validMonth.test(value) ? `${months[Number(value.slice(5)) - 1]} ${value.slice(0, 4)}` : "Select month"
+  const display = validMonth.test(value) ? `${months[Number(value.slice(5)) - 1]} ${value.slice(0, 4)}` : "Month year"
   return (
     <Popover open={open} onOpenChange={changeOpen}>
       <PopoverTrigger render={<Button ref={triggerRef} id={id} type="button" variant="outline" aria-label={label} data-dev-month-picker className="w-full min-w-0 justify-between font-normal" />}>

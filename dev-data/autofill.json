@@ -13,10 +13,10 @@
     "date started": "2023-08",
     "date ended": "2024-05",
     "contributor": ["Rivera, A.", "Santos, S."],
-    "i have permission to share this project": true,
-    "i have permission to include the contributors and materials in this project": true,
-    "i confirm that all details provided are accurate and not falsified": true,
-    "i agree to respect the intellectual property rights and applicable policies of the university or institution": true
+    "publish-rights": true,
+    "publish-accuracy": true,
+    "I confirm that I have the necessary rights and permissions to publish this project and its materials.": true,
+    "I confirm that the information is accurate and that I am authorized to publicly share the contributor details provided.": true
   },
   "images": ["example.png"]
 }

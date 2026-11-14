@@ -51,6 +51,37 @@ export async function initializeProjectsCollection(db) {
   return created
 }
 
+const proposalValidator = {
+  $jsonSchema: {
+    bsonType: "object",
+    required: ["projectId", "senderId", "message", "createdAt"],
+    properties: {
+      projectId: { bsonType: "objectId" },
+      senderId: { bsonType: "string", minLength: 1 },
+      message: { bsonType: "string", minLength: 1, maxLength: 10000 },
+      attachments: { bsonType: "array", maxItems: 5, items: { bsonType: "string" } },
+      createdAt: { bsonType: "date" },
+    },
+  },
+}
+
+export async function initializeProjectProposalsCollection(db) {
+  let created = false
+  const existing = await db.listCollections({ name: "projectProposals" }, { nameOnly: true }).hasNext()
+  if (!existing) {
+    try {
+      await db.createCollection("projectProposals", { validator: proposalValidator, validationLevel: "strict", validationAction: "error" })
+      created = true
+    } catch (error) {
+      if (error?.code !== 48) throw error
+    }
+  }
+  const proposals = db.collection("projectProposals")
+  await proposals.createIndex({ projectId: 1, createdAt: -1 })
+  await proposals.createIndex({ senderId: 1, createdAt: -1 })
+  return created
+}
+
 async function main() {
   const uri = process.env.MONGODB_URI
   const name = process.env.MONGODB_DB_NAME
@@ -58,8 +89,11 @@ async function main() {
   const client = new MongoClient(uri, { directConnection: true, serverSelectionTimeoutMS: 5000 })
   try {
     await client.connect()
-    const created = await initializeProjectsCollection(client.db(name))
+    const database = client.db(name)
+    const created = await initializeProjectsCollection(database)
+    const proposalsCreated = await initializeProjectProposalsCollection(database)
     console.log(created ? `Created projects collection in ${name}.` : `Projects collection already exists in ${name}; existing validation was left unchanged.`)
+    console.log(proposalsCreated ? `Created projectProposals collection in ${name}.` : `Project proposals collection already exists in ${name}; existing validation was left unchanged.`)
     console.log("Project indexes are ready.")
   } finally {
     await client.close()

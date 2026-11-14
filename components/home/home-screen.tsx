@@ -32,14 +32,14 @@ function ProjectCard({ project, scope }: { project: HomeProject; scope: string }
           <span className="inline-flex items-center gap-1" aria-label={`${project.collaborators} collaborators including publisher`}><HugeiconsIcon icon={UserGroupIcon} size={15} aria-hidden="true" />{project.collaborators}</span>
         </div>
         <div className="mt-6 flex items-start justify-end gap-2">
-          {scope !== "guest" && <ProjectSaveButton projectId={project.id} title={project.title} scope={scope} initialSaved={project.saved} />}
+          <ProjectSaveButton projectId={project.id} title={project.title} scope={scope} initialSaved={project.saved} />
           <Link href={`/projects/${project.id}`} aria-label={`Read ${project.title}`} className={buttonVariants({ className: "w-22.25" })}>Read</Link>
         </div>
     </Card>
   )
 }
 
-export function ProjectListing({ projects, total, search, page, pageSize, scope }: { projects: HomeProject[]; total: number; search: string; page: number; pageSize: number; scope: string }) {
+export function ProjectListing({ projects, total, search, page, pageSize, scope, isFetching = false }: { projects: HomeProject[]; total: number; search: string; page: number; pageSize: number; scope: string; isFetching?: boolean }) {
   const pages = Math.max(1, Math.ceil(total / pageSize))
   function pageHref(target: number) {
     const params = new URLSearchParams({ page: String(target), size: String(pageSize) })
@@ -47,7 +47,7 @@ export function ProjectListing({ projects, total, search, page, pageSize, scope 
     return `/home?${params.toString()}`
   }
   return (
-        <section aria-labelledby="projects-heading" className="mt-14">
+        <section aria-labelledby="projects-heading" aria-busy={isFetching || undefined} className="mt-14">
           <h2 id="projects-heading" className="text-base font-medium leading-5">Projects</h2>
           {search && <p className="mt-2 text-sm text-muted-foreground">Results for “{search}” · <Link href="/home" className="underline underline-offset-4">Clear search</Link></p>}
           <div className="mt-3.75">
@@ -65,10 +65,10 @@ export function ProjectListing({ projects, total, search, page, pageSize, scope 
   )
 }
 
-export function HomeScreen({ user, pageSize, searchControl, topicsContent, children }: { user: HomeUser | null; pageSize: number; searchControl: ReactNode; topicsContent: ReactNode; children: ReactNode }) {
+export function HomeScreen({ user, searchControl, topicsContent, children }: { user: HomeUser | null; searchControl: ReactNode; topicsContent: ReactNode; children: ReactNode }) {
   return (
     <main className="min-h-dvh bg-background pb-16 text-foreground">
-      <ResponsivePageSize pageSize={pageSize} />
+      <ResponsivePageSize />
       <header className="flex items-center justify-between gap-2 px-3 pt-9.25 sm:gap-4 sm:pl-11.5 sm:pr-8.5">
         <Link href="/home" className="text-base font-medium sm:text-xl"><BrandLogo compactOnSmallScreens /></Link>
         <HeaderActions user={user} searchControl={searchControl} />

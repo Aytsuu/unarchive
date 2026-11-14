@@ -53,7 +53,7 @@ export async function ProjectPageContent({ id, requestedVersion }: { id: string;
   const nextBefore = versions.length > 100 ? summaries.at(-1)?.version ?? null : null
   const versionHistory = version && validVersion(latestVersion) ? { versions: summaries, nextBefore, displayedVersion: version.version, latestVersion, canEdit: session?.user.id === project.ownerId } : undefined
   return <ProjectDetailView user={session?.user ? { id: session.user.id, name: session.user.name, email: session.user.email, image: session.user.image } : null} project={{
-    id, title: snapshot.title, description: snapshot.description, abstract: snapshot.abstract, topics: snapshot.topics, institution: snapshot.institution, dateStarted: snapshot.dateStarted, dateEnded: snapshot.dateEnded, contributors: snapshot.contributors, links: snapshot.links, references, demoCount: snapshot.demos.length, date, metrics,
+    id, title: snapshot.title, description: snapshot.description, abstract: snapshot.abstract, topics: snapshot.topics, institution: snapshot.institution, dateStarted: snapshot.dateStarted, dateEnded: snapshot.dateEnded, contributors: snapshot.contributors, links: snapshot.links, references, demoCount: snapshot.demos.length, date, metrics, canPropose: session?.user.id !== project.ownerId,
     ...(version ? { demoBase: `/api/projects/${id}/versions/${version.version}/demos`, versionHistory } : {}),
     citation: { title: snapshot.title, authors: snapshot.contributors ?? [], completionYear: year, institution: snapshot.institution ?? "", projectType: snapshot.projectType === "thesis" ? "Thesis" : "", url: canonicalProjectUrl(process.env.BETTER_AUTH_URL ?? "", id, version?.version), ...(version ? { version: version.version } : {}) },
   }} />

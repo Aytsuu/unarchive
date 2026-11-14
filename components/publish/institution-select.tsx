@@ -33,7 +33,7 @@ export function InstitutionSelect({ value, onChange }: { value: string; onChange
 
   return <div ref={anchor} data-dev-institution aria-label="Institution" className="space-y-2">
     <Combobox items={choices} filteredItems={choices} value={value || null} onValueChange={(next: string | null) => { setInput(next ?? ""); onChange(next ?? "") }} inputValue={input} onInputValueChange={setInput}>
-      <ComboboxInput id="institution" aria-label="Institution" placeholder="Search or enter an institution" maxLength={200} showClear className="w-full bg-background" />
+      <ComboboxInput id="institution" aria-label="Institution" placeholder="Search institutions" maxLength={200} showClear className="w-full bg-background" />
       <ComboboxContent>
         {isPending && <p role="status" className="px-3 py-2 text-sm text-muted-foreground">Loading institutions...</p>}
         {isError && <p className="px-3 py-2 text-sm text-muted-foreground">Directory unavailable. You can still enter an institution. <button type="button" className="underline" onClick={() => refetch()}>Retry</button></p>}

@@ -3,12 +3,12 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { StarIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { ProjectSaveButton } from "@/components/projects/project-save-button"
 
 export type ProjectMetricsValue = { views: number; stars: number; starred: boolean }
 
-export function ProjectMetrics({ projectId, title, scope, initial }: { projectId: string; title: string; scope: string; initial: ProjectMetricsValue }) {
+export function ProjectMetrics({ projectId, title, scope, initial, trailing }: { projectId: string; title: string; scope: string; initial: ProjectMetricsValue; trailing?: ReactNode }) {
   const queryClient = useQueryClient()
   const [metrics, setMetrics] = useState(initial)
   const [pending, setPending] = useState(false)
@@ -52,13 +52,12 @@ export function ProjectMetrics({ projectId, title, scope, initial }: { projectId
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-3.25">
+      <div className="flex flex-wrap items-center justify-end gap-3.25">
         <span className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm" aria-label={`${metrics.views} ${metrics.views === 1 ? "view" : "views"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/projects/views.svg" alt="" />
           <span aria-hidden="true">{metrics.views}</span>
         </span>
-        <ProjectSaveButton projectId={projectId} title={title} scope={scope} compact />
         <button type="button" aria-label={metrics.starred ? "Remove star from project" : "Star project"} aria-pressed={metrics.starred} disabled={pending} onClick={toggleStar} className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60">
           {metrics.starred ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -66,6 +65,8 @@ export function ProjectMetrics({ projectId, title, scope, initial }: { projectId
           ) : <HugeiconsIcon icon={StarIcon} size={15} strokeWidth={1.8} className="text-[color-mix(in_oklab,var(--border)_75%,var(--foreground))]" aria-hidden="true" />}
           <span aria-hidden="true">{metrics.stars}</span><span className="sr-only" aria-live="polite">{metrics.stars} {metrics.stars === 1 ? "star" : "stars"}</span>
         </button>
+        <ProjectSaveButton projectId={projectId} title={title} scope={scope} compact />
+        {trailing}
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </div>

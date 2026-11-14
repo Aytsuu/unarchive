@@ -67,7 +67,7 @@ export function ReferenceProjects({ value, onChange }: { value: ReferenceProject
               <HugeiconsIcon icon={Cancel01Icon} size={12} aria-hidden="true" />
             </ComboboxPrimitive.ChipRemove>
           </ComboboxChip>)}
-          <ComboboxChipsInput aria-label="Search reference projects" placeholder={value.length ? "Add another project" : "Search published projects"} maxLength={100} />
+          <ComboboxChipsInput id="reference-projects-search" placeholder={value.length ? "Add another project" : "Search published projects"} maxLength={100} />
         </ComboboxChips>
         <ComboboxContent anchor={anchor}>
           {!current && <p role="status" className="px-3 py-2 text-sm text-muted-foreground">Searching projects…</p>}

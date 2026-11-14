@@ -8,6 +8,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { HomeProject } from "@/components/home/home-screen"
 import searchIcon from "@/components/home/search.svg"
 
@@ -32,9 +33,12 @@ export function HomeSearch({ search, projects, className }: { search: string; pr
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogTrigger render={<Button type="button" variant="outline" size="icon" className={className} aria-label="Search projects" />}>
-        <Image src={searchIcon} alt="" className="size-4" />
-      </DialogTrigger>
+      <Tooltip>
+        <DialogTrigger render={<TooltipTrigger render={<Button type="button" variant="outline" size="icon" className={className} aria-label="Search projects" />} />}>
+          <Image src={searchIcon} alt="" className="size-4" />
+        </DialogTrigger>
+        <TooltipContent side="bottom">Search</TooltipContent>
+      </Tooltip>
       <DialogContent showCloseButton={false} className="gap-0 overflow-hidden p-2">
         <DialogHeader className="sr-only">
           <DialogTitle>Search projects</DialogTitle>

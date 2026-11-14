@@ -27,10 +27,6 @@ export function ProjectCredits({ institution, onInstitutionChange, dateStarted, 
         <Label htmlFor="institution">Institution</Label>
         <InstitutionSelect value={institution} onChange={onInstitutionChange} />
       </div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium">Project type</p>
-        <p className="text-sm text-muted-foreground">Thesis</p>
-      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-2">
           <Label htmlFor="date-started">Date started</Label>
@@ -39,17 +35,17 @@ export function ProjectCredits({ institution, onInstitutionChange, dateStarted, 
         <div className="flex min-w-0 flex-col gap-2">
           <Label htmlFor="date-ended">Date ended</Label>
           <MonthPicker id="date-ended" label="Date ended" min={dateStarted || undefined} value={dateEnded} onChange={onDateEndedChange} />
-          <p className="text-sm text-muted-foreground">The end year is used as the academic completion year in citations.</p>
         </div>
       </div>
       <div className="space-y-2">
         <h2 className="text-sm font-medium">Authors / contributors</h2>
-        <p className="text-sm text-muted-foreground">Names listed here appear as authors in the project citation, in order. Enter each name in APA format, for example: Santos, A. B.</p>
+        <p className="text-sm text-muted-foreground">Names listed here appear as authors in the project citation, in order.</p>
         <RepeatableFields kind="contributor" fields={contributors} onAdd={onAddContributor} onChange={onContributorsChange} />
       </div>
       <div className="space-y-2">
         <h2 className="text-sm font-medium" id="reference-projects-heading">Reference projects</h2>
         <p className="text-sm text-muted-foreground">Find published projects that informed this work.</p>
+        <Label htmlFor="reference-projects-search">Search</Label>
         <ReferenceProjects value={referenceProjects} onChange={onReferenceProjectsChange} />
       </div>
     </div>

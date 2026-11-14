@@ -1,13 +1,15 @@
 "use client"
 
 import { useEffect } from "react"
+import { parseListingParams } from "@/lib/projects/listing-params.mjs"
 import { pageSizeForWidth } from "@/lib/projects/listing-viewport.mjs"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-export function ResponsivePageSize({ pageSize }: { pageSize: number }) {
+export function ResponsivePageSize() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { pageSize } = parseListingParams(searchParams)
 
   useEffect(() => {
     function updatePageSize() {
