@@ -11,7 +11,13 @@ type PublishConsentsProps = {
   disabled?: boolean
 }
 
-export function PublishConsents({ publishRights, contributorAccuracy, onPublishRightsChange, onContributorAccuracyChange, disabled = false }: PublishConsentsProps) {
+export function PublishConsents({
+  publishRights,
+  contributorAccuracy,
+  onPublishRightsChange,
+  onContributorAccuracyChange,
+  disabled = false,
+}: PublishConsentsProps) {
   return (
     <fieldset className="mt-12.5 w-full space-y-5">
       <legend className="text-lg font-medium">Before you publish</legend>

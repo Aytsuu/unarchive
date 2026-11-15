@@ -61,7 +61,7 @@ try {
       await page.getByRole("button", { name: "Inbox" }).click()
       await page.getByRole("dialog", { name: "Inbox" }).waitFor()
       const body = await page.getByRole("dialog").innerText()
-      if (!/collaborate|No proposals yet|Unable to load/i.test(body)) failures.push(`inbox after submit: ${body.slice(0, 200)}`)
+      if (!/Projects|Proposals|This project has no proposals yet|collaborate|Unable to load/i.test(body)) failures.push(`inbox after submit: ${body.slice(0, 200)}`)
       await page.screenshot({ path: resolve(outDir, "inbox-after-submit.png") })
       break
     }

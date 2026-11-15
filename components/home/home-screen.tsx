@@ -11,6 +11,7 @@ import { HomeStatistics } from "@/components/home/home-statistics"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { ResponsivePageSize } from "@/components/home/responsive-page-size"
 import { ProjectSaveButton } from "@/components/projects/project-save-button"
+import { SiteFooter } from "@/components/legal/site-footer"
 
 export type HomeProject = { id: string; title: string; description: string; institution: string; publisher: string; topics: string[]; views: number; stars: number; collaborators: number; saved?: boolean }
 
@@ -67,20 +68,23 @@ export function ProjectListing({ projects, total, search, page, pageSize, scope,
 
 export function HomeScreen({ user, searchControl, topicsContent, children }: { user: HomeUser | null; searchControl: ReactNode; topicsContent: ReactNode; children: ReactNode }) {
   return (
-    <main className="min-h-dvh bg-background pb-16 text-foreground">
-      <ResponsivePageSize />
-      <header className="flex items-center justify-between gap-2 px-3 pt-9.25 sm:gap-4 sm:pl-11.5 sm:pr-8.5">
-        <Link href="/home" className="text-base font-medium sm:text-xl"><BrandLogo compactOnSmallScreens /></Link>
-        <HeaderActions user={user} searchControl={searchControl} />
-      </header>
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+      <main className="flex-1 pb-16">
+        <ResponsivePageSize />
+        <header className="flex items-center justify-between gap-2 px-3 pt-9.25 sm:gap-4 sm:pl-11.5 sm:pr-8.5">
+          <Link href="/home" className="text-base font-medium sm:text-xl"><BrandLogo compactOnSmallScreens /></Link>
+          <HeaderActions user={user} searchControl={searchControl} />
+        </header>
 
-      <div className="mx-auto mt-12.75 w-full max-w-341.5 px-5 sm:px-5">
-        <HomeStatistics />
-        {topicsContent}
+        <div className="mx-auto mt-12.75 w-full max-w-341.5 px-5 sm:px-5">
+          <HomeStatistics />
+          {topicsContent}
 
-        {children}
-      </div>
-    </main>
+          {children}
+        </div>
+      </main>
+      <SiteFooter />
+    </div>
   )
 }
 

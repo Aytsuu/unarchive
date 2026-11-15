@@ -19,6 +19,11 @@ export type InboxProposal = {
   attachmentCount: number
 }
 
+export type InboxProject = {
+  id: string
+  title: string
+}
+
 type ProposalProject = { _id: ObjectId; ownerId: string; title: string; withdrawnAt?: Date }
 type InboxRow = ProposalRecord & { _id: ObjectId; project: { title: string } }
 
@@ -76,7 +81,13 @@ export async function listInbox(db: Db, ownerId: string, cursor: string | null) 
     { $project: { name: 1 } },
   ], { maxTimeMS: 3000 }).toArray() : []
   const names = new Map(users.map((user) => [typeof user._id === "string" ? user._id : user._id.toHexString(), user.name?.trim() || "Member"]))
+  const owned = await db.collection<ProposalProject>("projects")
+    .find({ ownerId, withdrawnAt: { $exists: false } }, { projection: { title: 1 }, maxTimeMS: 3000 })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .toArray()
   return {
+    projects: owned.map((project) => ({ id: project._id.toHexString(), title: project.title } satisfies InboxProject)),
     proposals: page.map((record) => ({
       id: record._id.toHexString(),
       projectId: record.projectId.toHexString(),

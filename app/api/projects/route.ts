@@ -11,6 +11,8 @@ import { ProjectStorageConfigurationError, ProjectStorageValidationError, delete
 import { claimProjectAttempt } from "@/lib/projects/rate-limit"
 import { parseProject, ProjectValidationError } from "@/lib/projects/validation"
 import { getSubmissionIdentity, InvalidIdempotencyKeyError } from "@/lib/projects/idempotency"
+import { hasAcceptedCurrentTerms } from "@/lib/legal/acceptances"
+import { ensureLegalDocuments } from "@/lib/legal/documents"
 
 const MAX_REQUEST_BYTES = 26 * 1024 * 1024
 const MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -103,6 +105,8 @@ export async function POST(request: Request) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
     if (!session) return failure("Please sign in to publish.", 401)
+    await ensureLegalDocuments(db)
+    if (!await hasAcceptedCurrentTerms(db, session.user.id)) return failure("Please accept the Terms & Conditions before publishing.", 403)
     const retryAfter = await claimProjectAttempt(db, session.user.id)
     if (retryAfter) return failure("Too many publishing attempts. Please try again later.", 429, { "Retry-After": String(retryAfter) })
     const { project, files } = readSubmission(await readMultipart(request))

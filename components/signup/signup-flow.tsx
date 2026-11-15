@@ -4,7 +4,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"
 import { BrandLogo } from "@/components/brand/brand-logo"
+import { AuthLegalNotice } from "@/components/legal/auth-legal-notice"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
@@ -13,6 +15,7 @@ import { authClient } from "@/lib/auth-client"
 export function SignupFlow() {
   const router = useRouter()
   const [details, setDetails] = useState({ name: "", email: "", password: "", confirmPassword: "" })
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
   const [showRecovery, setShowRecovery] = useState(false)
@@ -32,6 +35,7 @@ export function SignupFlow() {
     if (!details.name.trim()) return setError("Enter your name.")
     if (details.password.length < 8) return setError("Your password must contain at least 8 characters.")
     if (details.password !== details.confirmPassword) return setError("Passwords do not match.")
+    if (!acceptedTerms) return setError("Please accept the Terms & Conditions to continue.")
     const email = details.email.trim()
     setPending(true)
     try {
@@ -51,6 +55,7 @@ export function SignupFlow() {
         return
       }
       setDetails({ name: "", email: "", password: "", confirmPassword: "" })
+      setAcceptedTerms(false)
       router.replace("/verify-email")
     } catch {
       setError("Unable to complete signup right now. Please try again.")
@@ -81,11 +86,13 @@ export function SignupFlow() {
           </div>
           {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
           {showRecovery && <Button type="button" variant="link" className="mt-2 h-auto px-0 text-left whitespace-normal" onClick={openVerification}>Request a verification code</Button>}
-          <Button type="submit" className="mt-10 w-full" disabled={pending}>{pending ? "Creating account…" : "Next"}</Button>
-          <div className="mt-11.25 text-center text-sm font-medium leading-[normal]">
-            <p>By continuing, you agree to our<br />Terms of Service and Privacy Policy.</p>
-            <p className="mt-10">Have an account? <Link href="/login" replace className="underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">Log in</Link></p>
+          <AuthLegalNotice className="mt-8" />
+          <div className="mt-5 flex items-start gap-3 text-left">
+            <Checkbox id="signup-terms" checked={acceptedTerms} onCheckedChange={(checked) => setAcceptedTerms(checked === true)} disabled={pending} />
+            <Label htmlFor="signup-terms" className="leading-5">I accept Unarchive&apos;s Terms & Conditions.</Label>
           </div>
+          <Button type="submit" className="mt-10 w-full" disabled={pending || !acceptedTerms}>{pending ? "Creating account…" : "Next"}</Button>
+          <p className="mt-11.25 text-center text-sm font-medium">Have an account? <Link href="/login" replace className="underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">Log in</Link></p>
         </form>
       </div>
     </main>

@@ -1,7 +1,40 @@
+import { differenceInCalendarDays, startOfDay } from "date-fns"
 import { ObjectId, type Db } from "mongodb"
 
 type SaveRecord = { _id?: ObjectId; projectId: ObjectId; userId: string; createdAt: Date }
-type SavedRow = { _id: ObjectId; projectId: ObjectId; project: { title: string } }
+type SavedRow = {
+  _id: ObjectId
+  projectId: ObjectId
+  createdAt: Date
+  project: { title: string; description?: string; topics?: string[]; ownerId: string }
+}
+
+export type SavedProjectListItem = {
+  id: string
+  title: string
+  description: string
+  topics: string[]
+  publisher: string
+  savedAt: string
+  savedLabel: string
+}
+
+function formatSavedDate(savedAt: Date) {
+  const month = String(savedAt.getMonth() + 1).padStart(2, "0")
+  const day = String(savedAt.getDate()).padStart(2, "0")
+  return `${month}/${day}/${savedAt.getFullYear()}`
+}
+
+export function formatSavedLabel(savedAt: Date, now = new Date()) {
+  const days = differenceInCalendarDays(startOfDay(now), startOfDay(savedAt))
+  if (days === 0) return "Saved today"
+  if (days === 1) return "Saved yesterday"
+  if (savedAt.getFullYear() === now.getFullYear()) {
+    const month = savedAt.toLocaleDateString("en-US", { month: "short" })
+    return `Saved on ${month} ${savedAt.getDate()}`
+  }
+  return formatSavedDate(savedAt)
+}
 const indexPromises = new WeakMap<Db, Promise<void>>()
 const PAGE_SIZE = 50
 
@@ -49,11 +82,25 @@ export async function listSavedProjects(db: Db, userId: string, cursor: string |
     { $unwind: "$project" },
     { $match: { "project.withdrawnAt": { $exists: false } } },
     { $limit: PAGE_SIZE + 1 },
-    { $project: { projectId: 1, "project.title": 1 } },
+    { $project: { projectId: 1, createdAt: 1, "project.title": 1, "project.description": 1, "project.topics": 1, "project.ownerId": 1 } },
   ], { maxTimeMS: 3000 }).toArray()
   const page = records.slice(0, PAGE_SIZE)
+  const ownerIds = [...new Set(page.map((record) => record.project.ownerId).filter(Boolean))]
+  const owners = ownerIds.length ? await db.collection("user").aggregate<{ _id: ObjectId | string; name?: string }>([
+    { $match: { $expr: { $in: [{ $toString: "$_id" }, ownerIds] } } },
+    { $project: { name: 1 } },
+  ], { maxTimeMS: 3000 }).toArray() : []
+  const names = new Map(owners.map((owner) => [typeof owner._id === "string" ? owner._id : owner._id.toHexString(), owner.name?.trim() || "Publisher"]))
   return {
-    projects: page.map((record) => ({ id: record.projectId.toHexString(), title: record.project.title })),
+    projects: page.map((record) => ({
+      id: record.projectId.toHexString(),
+      title: record.project.title,
+      description: record.project.description?.trim() || "",
+      topics: record.project.topics ?? [],
+      publisher: names.get(record.project.ownerId) || "Publisher",
+      savedAt: record.createdAt.toISOString(),
+      savedLabel: formatSavedLabel(record.createdAt),
+    } satisfies SavedProjectListItem)),
     nextCursor: records.length > PAGE_SIZE ? page.at(-1)!._id.toHexString() : null,
   }
 }

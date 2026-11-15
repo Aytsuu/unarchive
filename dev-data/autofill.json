@@ -15,6 +15,8 @@
     "contributor": ["Rivera, A.", "Santos, S."],
     "publish-rights": true,
     "publish-accuracy": true,
+    "signup-terms": true,
+    "I accept Unarchive's Terms & Conditions.": true,
     "I confirm that I have the necessary rights and permissions to publish this project and its materials.": true,
     "I confirm that the information is accurate and that I am authorized to publicly share the contributor details provided.": true
   },

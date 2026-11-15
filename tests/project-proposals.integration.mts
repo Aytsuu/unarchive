@@ -17,10 +17,12 @@ test("proposals insert for other owners and list only in the owner's inbox", { s
     const db = client.db(name)
     assert.equal(await initializeProjectProposalsCollection(db), true)
     const owned = new ObjectId()
+    const emptyOwned = new ObjectId()
     const other = new ObjectId()
     const withdrawn = new ObjectId()
     await db.collection("projects").insertMany([
-      { _id: owned, ownerId: "alice", title: "Owned project", createdAt: new Date(), updatedAt: new Date() },
+      { _id: owned, ownerId: "alice", title: "Owned project", createdAt: new Date("2026-01-02"), updatedAt: new Date() },
+      { _id: emptyOwned, ownerId: "alice", title: "Empty owned", createdAt: new Date("2026-01-01"), updatedAt: new Date() },
       { _id: other, ownerId: "bob", title: "Someone else's project", createdAt: new Date(), updatedAt: new Date() },
       { _id: withdrawn, ownerId: "alice", title: "Withdrawn", withdrawnAt: new Date(), createdAt: new Date(), updatedAt: new Date() },
     ])
@@ -39,7 +41,13 @@ test("proposals insert for other owners and list only in the owner's inbox", { s
     assert.equal(inbox.proposals[0].senderName, "Bob")
     assert.equal(inbox.proposals[0].message, "I would like to collaborate.")
     assert.equal(inbox.nextCursor, null)
-    assert.deepEqual((await listInbox(db, "bob", null)).proposals, [])
+    assert.deepEqual(inbox.projects, [
+      { id: owned.toHexString(), title: "Owned project" },
+      { id: emptyOwned.toHexString(), title: "Empty owned" },
+    ])
+    const bobInbox = await listInbox(db, "bob", null)
+    assert.deepEqual(bobInbox.proposals, [])
+    assert.deepEqual(bobInbox.projects, [{ id: other.toHexString(), title: "Someone else's project" }])
 
     const extras = Array.from({ length: 51 }, () => new ObjectId())
     await db.collection("projectProposals").insertMany(extras.map((_id, index) => ({

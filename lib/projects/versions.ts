@@ -1,4 +1,5 @@
 import { ObjectId, type ClientSession, type Db, type MongoClient } from "mongodb"
+import { ensurePublicationConfirmationIndexes, publicationConfirmationDocument } from "../legal/confirmations.ts"
 import type { ProjectInput } from "./validation"
 
 export class ProjectVersionConflictError extends Error {
@@ -105,6 +106,7 @@ export async function ensureProjectVersionIndexes(db: Db): Promise<void> {
 
 export async function createInitialVersionedProject(client: MongoClient, db: Db, document: VersionableProject): Promise<void> {
   await ensureProjectVersionIndexes(db)
+  await ensurePublicationConfirmationIndexes(db)
   const capturedAt = new Date()
   const session = client.startSession()
   try {
@@ -112,6 +114,7 @@ export async function createInitialVersionedProject(client: MongoClient, db: Db,
       const snapshot = await snapshotWithReferences(db, document, session, true)
       await db.collection<VersionableProject>("projects").insertOne({ ...document, currentVersion: 1 }, { session })
       await db.collection<ProjectVersion>("projectVersions").insertOne({ projectId: document._id, version: 1, kind: "published", capturedAt, snapshot }, { session })
+      await db.collection("projectPublicationConfirmations").insertOne(publicationConfirmationDocument(document._id, document.ownerId, capturedAt), { session })
     }, transactionOptions)
   } finally { await session.endSession() }
 }

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"
 import { BrandLogo } from "@/components/brand/brand-logo"
+import { AuthLegalNotice } from "@/components/legal/auth-legal-notice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -94,7 +95,7 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
           <Button type="submit" className="mt-10 w-full" disabled={pending}>{pending ? "Please wait…" : "Next"}</Button>
         </form>
       </div>
-      <p className="mt-11.75 text-center text-sm font-medium leading-[normal]">By continuing, you agree to our<br />Terms of Service and Privacy Policy.</p>
+      <AuthLegalNotice className="mt-11.75" />
       <p className="mt-12.5 text-sm font-medium">Need an account?{"  "}<Link href="/signup" replace className="focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Sign up</Link></p>
     </main>
   )

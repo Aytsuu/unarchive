@@ -4,6 +4,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api"
 import { emailOTP } from "better-auth/plugins"
 import { createHmac } from "node:crypto"
 import type { Db, MongoClient } from "mongodb"
+import { recordTermsAcceptanceByEmail } from "./legal/acceptances.ts"
 
 const RESEND_INTERVAL_MS = 3 * 60 * 1000
 
@@ -133,8 +134,13 @@ export function createAppAuth(options: AuthOptions) {
       after: createAuthMiddleware(async (context) => {
         const result = context.context.returned
         const succeeded = result instanceof Response ? result.ok : !!result && typeof result === "object" && "user" in result
-        if (context.path === "/sign-up/email" && succeeded && typeof context.body?.email === "string" && context.body.email.length <= 254) {
-          await claimResend(context.body.email)
+        if ((context.path === "/sign-up/email" || context.path === "/sign-in/email") && succeeded && typeof context.body?.email === "string" && context.body.email.length <= 254) {
+          if (context.path === "/sign-up/email") await claimResend(context.body.email)
+          try {
+            await recordTermsAcceptanceByEmail(options.db, context.body.email, context.path === "/sign-up/email" ? "signup" : "sign-in")
+          } catch {
+            console.error("Could not record terms acceptance")
+          }
         }
       }),
     },
