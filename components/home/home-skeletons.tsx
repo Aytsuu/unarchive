@@ -11,9 +11,8 @@ export function StatisticsSkeleton() {
 }
 
 export function TopicsSkeleton() {
-  return <section aria-label="Loading topics" aria-busy="true">
+  return <section aria-label="Loading topics" aria-busy="true" className="mb-10">
     <span role="status" className="sr-only">Loading topics</span>
-    <Skeleton aria-hidden="true" className="h-5 w-16" />
-    <div aria-hidden="true" className="mt-4 grid grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }, (_, index) => <Skeleton key={index} className="h-15 rounded-[20px]" />)}</div>
+    <div aria-hidden="true" className="grid grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }, (_, index) => <Skeleton key={index} className="h-15 rounded-[20px]" />)}</div>
   </section>
 }

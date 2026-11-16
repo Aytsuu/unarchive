@@ -76,7 +76,7 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
         <HeaderActions user={user} />
       </header>
 
-      <article className="mx-auto mt-7.5 w-full max-w-360 px-5 lg:pl-21.25 lg:pr-12.5">
+      <article className="mx-auto mt-12.75 w-full max-w-360 px-5 lg:pl-21.25 lg:pr-12.5">
         <div className="flex min-h-8.75 flex-wrap items-center gap-x-4 gap-y-3">
           <ProjectTopics topics={project.topics ?? []} />
           <div className="ml-auto">{user ? <ProjectMetrics key={project.id} projectId={project.id} title={project.title} scope={user.id} initial={project.metrics} trailing={propose} /> : <div className="flex flex-wrap items-center justify-end gap-3.25">

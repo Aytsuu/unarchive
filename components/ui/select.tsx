@@ -64,11 +64,14 @@ function SelectContent({
   align = "center",
   alignOffset = 0,
   alignItemWithTrigger = true,
+  anchor,
+  collisionAvoidance,
+  positionMethod,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<
     SelectPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
+    "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger" | "anchor" | "collisionAvoidance" | "positionMethod"
   >) {
   return (
     <SelectPrimitive.Portal>
@@ -78,6 +81,9 @@ function SelectContent({
         align={align}
         alignOffset={alignOffset}
         alignItemWithTrigger={alignItemWithTrigger}
+        anchor={anchor}
+        collisionAvoidance={collisionAvoidance}
+        positionMethod={positionMethod}
         className="isolate z-50"
       >
         <SelectPrimitive.Popup

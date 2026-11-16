@@ -1,7 +1,8 @@
 import { revalidateTag } from "next/cache"
-import { PROJECT_LIST_TAG, getListingMetrics, getProjectListing } from "@/lib/projects/listing"
+import { PROJECT_LIST_TAG, getFilteredProjectListing, getListingMetrics, getProjectListing } from "@/lib/projects/listing"
 import { connection } from "next/server"
 import { parseListingParams } from "@/lib/projects/listing-params.mjs"
+import { PROJECT_TOPICS } from "@/lib/project-topics.mjs"
 import { auth } from "@/lib/auth"
 import { ObjectId } from "mongodb"
 import { db, mongoClient } from "@/lib/mongodb"
@@ -83,8 +84,14 @@ export async function GET(request: Request) {
   await connection()
   try {
     const session = await auth.api.getSession({ headers: request.headers })
-    const { search, page, pageSize } = parseListingParams(new URL(request.url).searchParams)
-    const listing = await getProjectListing(search, page, pageSize)
+    const params = new URL(request.url).searchParams
+    const { search, page, pageSize, sort, yearFrom, yearTo, institutions } = parseListingParams(params)
+    const topicRaw = (params.get("topic") ?? "").trim()
+    const topic = PROJECT_TOPICS.includes(topicRaw) ? topicRaw : ""
+    const filtered = Boolean(topic || sort || yearFrom || yearTo || institutions.length)
+    const listing = filtered
+      ? await getFilteredProjectListing(page, pageSize, { search, topic, sort, yearFrom, yearTo, institutions })
+      : await getProjectListing(search, page, pageSize)
     const [metrics, savedIds] = await Promise.all([
       getListingMetrics(listing.projects.map((project) => project.id)),
       session ? getSavedProjectIds(db, listing.projects.map((project) => new ObjectId(project.id)), session.user.id) : Promise.resolve(null),

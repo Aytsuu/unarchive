@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { BrandLogo } from "@/components/brand/brand-logo"
-import { SiteFooter } from "@/components/legal/site-footer"
 import { Button } from "@/components/ui/button"
 
 type Report = { id: string; category: string; details: string; projectId: string | null; status: string; createdAt: string }
@@ -73,7 +72,6 @@ export function AdminReports() {
           ))}
         </ul>
       </main>
-      <SiteFooter />
     </div>
   )
 }

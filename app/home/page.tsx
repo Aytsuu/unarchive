@@ -20,5 +20,5 @@ async function HomeContent() {
 }
 
 export default function HomePage() {
-  return <Suspense fallback={<main className="min-h-dvh bg-background"><div className="mx-auto w-full max-w-341.5 px-5 pt-24"><div className="mb-10"><StatisticsSkeleton /></div><TopicsSkeleton /><ProjectListSkeleton /></div></main>}><HomeContent /></Suspense>
+  return <Suspense fallback={<main className="min-h-dvh bg-background"><div className="mx-auto w-full max-w-341.5 px-5 pt-24"><TopicsSkeleton /><div className="mb-10"><StatisticsSkeleton /></div><ProjectListSkeleton /></div></main>}><HomeContent /></Suspense>
 }

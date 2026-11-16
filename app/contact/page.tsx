@@ -3,7 +3,6 @@ import Link from "next/link"
 import { headers } from "next/headers"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { ContentReportForm } from "@/components/legal/content-report-form"
-import { SiteFooter } from "@/components/legal/site-footer"
 import { auth } from "@/lib/auth"
 import { legalContactEmail } from "@/lib/legal/admin"
 
@@ -29,7 +28,6 @@ export default async function ContactPage() {
         </p>
         <div className="mt-8"><ContentReportForm signedIn={Boolean(session)} /></div>
       </main>
-      <SiteFooter />
     </div>
   )
 }

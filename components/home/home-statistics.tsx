@@ -18,7 +18,7 @@ function InstitutionCard({ institutions }: { institutions: Count[] }) {
   const total = institutions.reduce((sum, item) => sum + item.count, 0)
   const maximum = institutions.reduce((max, item) => Math.max(max, item.count), 0)
   return <Card className={cardClass}>
-    <div><p className="text-xs text-muted-foreground">Project distribution</p><h3 className="mt-1 text-base font-medium">Universities & institutions</h3></div>
+    <div><p className="text-xs text-muted-foreground">Project Distribution</p><h3 className="mt-1 text-base font-medium">Universities & institutions</h3></div>
     {institutions.length ? <>
       <div className="flex max-h-56 flex-wrap items-center justify-center gap-2 overflow-y-auto py-2" aria-label="Institution project distribution">
         {institutions.map((institution, index) => {

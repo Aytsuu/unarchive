@@ -80,7 +80,7 @@ export function SubmitProposalForm({ projectId, title }: { projectId: string; ti
         <Button type="submit" form="proposal-form" className="w-[119px]" disabled={pending || missingRequired}>{pending ? "Submitting..." : "Submit"}</Button>
       </header>
 
-      <form id="proposal-form" onSubmit={onSubmit} aria-busy={pending} className="mx-auto mt-4.5 w-full max-w-[809px] px-5">
+      <form id="proposal-form" onSubmit={onSubmit} aria-busy={pending} className="mx-auto mt-12.75 w-full max-w-[809px] px-5">
         <h1 className="text-center text-[26px] font-medium leading-[31px]">Submit a Proposal</h1>
         <p className="mt-1.75 text-center text-xl font-medium wrap-break-word">{title}</p>
         {status && <p role="alert" className="mt-4 text-center text-sm text-destructive">{status}</p>}

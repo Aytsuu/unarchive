@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { LegalDocumentView } from "@/components/legal/legal-document"
-import { SiteFooter } from "@/components/legal/site-footer"
 import type { LegalDocumentContent } from "@/lib/legal/policy"
 
 export function LegalPage({ document }: { document: LegalDocumentContent }) {
@@ -18,7 +17,6 @@ export function LegalPage({ document }: { document: LegalDocumentContent }) {
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-12">
         <LegalDocumentView document={document} />
       </main>
-      <SiteFooter />
     </div>
   )
 }

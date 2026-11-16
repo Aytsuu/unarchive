@@ -181,7 +181,7 @@ export function PublishForm() {
         </div>
       </header>
 
-      <section className="mx-auto mt-6.75 flex w-full max-w-89.25 flex-col items-center" aria-busy={pending}>
+      <section className="mx-auto mt-12.75 flex w-full max-w-89.25 flex-col items-center" aria-busy={pending}>
         <Progress value={step * 100 / 3} aria-label="Publish progress" aria-valuetext={`Step ${step} of 3`} className="mx-auto w-55 max-w-full **:data-[slot=progress-track]:h-2" />
         <p className="sr-only" aria-live="polite">Step {step} of 3</p>
         <h1 className="mt-8.5 text-center text-[26px] font-medium leading-7.75">Share Your Work</h1>

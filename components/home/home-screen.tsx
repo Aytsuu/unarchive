@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { StarIcon, UserGroupIcon, ViewIcon } from "@hugeicons/core-free-icons"
 import { topicStyles, TopicIcon } from "@/components/projects/topic-icon"
+import { topicSlug } from "@/lib/projects/topic-slug.mjs"
 import type { HomeUser } from "@/components/home/account-menu"
 import { HeaderActions } from "@/components/home/header-actions"
 import type { ReactNode } from "react"
@@ -11,11 +12,10 @@ import { HomeStatistics } from "@/components/home/home-statistics"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { ResponsivePageSize } from "@/components/home/responsive-page-size"
 import { ProjectSaveButton } from "@/components/projects/project-save-button"
-import { SiteFooter } from "@/components/legal/site-footer"
 
 export type HomeProject = { id: string; title: string; description: string; institution: string; publisher: string; topics: string[]; views: number; stars: number; collaborators: number; saved?: boolean }
 
-function ProjectCard({ project, scope }: { project: HomeProject; scope: string }) {
+export function ProjectCard({ project, scope }: { project: HomeProject; scope: string }) {
   return (
     <Card className="min-h-86.75 gap-0 rounded-[20px] border border-border p-5 ring-0">
         <div className="min-w-0">
@@ -77,28 +77,26 @@ export function HomeScreen({ user, searchControl, topicsContent, children }: { u
         </header>
 
         <div className="mx-auto mt-12.75 w-full max-w-341.5 px-5 sm:px-5">
-          <HomeStatistics />
           {topicsContent}
+          <HomeStatistics />
 
           {children}
         </div>
       </main>
-      <SiteFooter />
     </div>
   )
 }
 
 export function HomeTopics() {
   return (
-        <section aria-labelledby="topics-heading">
-          <h1 id="topics-heading" className="text-base font-medium leading-5">Topics</h1>
-          <div className="mt-4 grid grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Object.entries(topicStyles).map(([name, topic]) => <div key={name} className={`flex min-h-15 items-center gap-3 rounded-[20px] px-5 py-2 text-base font-medium leading-tight ${topic.color}`}>
+        <section aria-label="Topics" className="mb-10">
+          <div className="grid grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Object.entries(topicStyles).map(([name, topic]) => <Link key={name} href={`/topics/${topicSlug(name)}`} className={`flex min-h-15 items-center gap-3 rounded-[20px] px-5 py-2 text-base font-medium leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring ${topic.color}`}>
               <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center">
                 <TopicIcon topic={name} size={24} />
               </span>
               <span>{name}</span>
-            </div>)}
+            </Link>)}
           </div>
         </section>
 
