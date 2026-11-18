@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { headers } from "next/headers"
+import { connection } from "next/server"
+import { Suspense } from "react"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { ContentReportForm } from "@/components/legal/content-report-form"
 import { auth } from "@/lib/auth"
@@ -11,7 +13,8 @@ export const metadata: Metadata = {
   description: "Contact Unarchive about copyright, privacy, authorship, or other content concerns.",
 }
 
-export default async function ContactPage() {
+async function ContactContent() {
+  await connection()
   const session = await auth.api.getSession({ headers: await headers() })
   const contactEmail = legalContactEmail()
   return (
@@ -30,4 +33,8 @@ export default async function ContactPage() {
       </main>
     </div>
   )
+}
+
+export default function ContactPage() {
+  return <Suspense fallback={<main className="min-h-dvh bg-background" />}><ContactContent /></Suspense>
 }

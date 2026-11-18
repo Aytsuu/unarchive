@@ -1,21 +1,36 @@
-import Link from "next/link"
-import { BrandLogo } from "@/components/brand/brand-logo"
-import { SiteFooter } from "@/components/legal/site-footer"
-import { buttonVariants } from "@/components/ui/button"
+import { headers } from "next/headers"
+import { connection } from "next/server"
+import { cache } from "react"
+import { Suspense } from "react"
+import { auth } from "@/lib/auth"
+import { getProjectListing } from "@/lib/projects/listing"
+import { LandingAccountNav, LandingGetStarted, LandingPage, LandingPreviewCards } from "@/components/landing/landing-page"
+
+const signedIn = cache(async () => {
+  await connection()
+  const session = await auth.api.getSession({ headers: await headers() })
+  return Boolean(session)
+})
+
+async function SessionAccount() {
+  return <LandingAccountNav signedIn={await signedIn()} />
+}
+
+async function SessionGetStarted() {
+  return <LandingGetStarted signedIn={await signedIn()} />
+}
+
+async function LivePreviews() {
+  const listing = await getProjectListing("", 1, 3)
+  return <LandingPreviewCards projects={listing.projects} />
+}
 
 export default function Home() {
   return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <main className="flex-1">
-        <header className="flex items-start justify-between gap-4 px-5 pt-5.25 sm:pl-10 sm:pr-8.75">
-          <span className="flex h-10 items-center text-xl font-medium"><BrandLogo /></span>
-          <nav aria-label="Account" className="mt-2.5 flex items-center gap-4.5">
-            <Link href="/login" className={buttonVariants({ variant: "ghost" })}>Log in</Link>
-            <Link href="/signup" className={buttonVariants()}>Get Started</Link>
-          </nav>
-        </header>
-      </main>
-      <SiteFooter />
-    </div>
+    <LandingPage
+      account={<Suspense fallback={<LandingAccountNav signedIn={false} />}><SessionAccount /></Suspense>}
+      previews={<Suspense fallback={<LandingPreviewCards projects={[]} />}><LivePreviews /></Suspense>}
+      getStarted={<Suspense fallback={<LandingGetStarted signedIn={false} />}><SessionGetStarted /></Suspense>}
+    />
   )
 }

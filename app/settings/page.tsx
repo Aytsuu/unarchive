@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { headers } from "next/headers"
+import { connection } from "next/server"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { BrandLogo } from "@/components/brand/brand-logo"
@@ -7,6 +8,7 @@ import { auth } from "@/lib/auth"
 import { GoogleLinkButton } from "@/components/auth-session/google-link-button"
 
 async function SettingsContent({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  await connection()
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect("/login")
   const { error } = await searchParams

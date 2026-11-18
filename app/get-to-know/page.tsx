@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { headers } from "next/headers"
+import { connection } from "next/server"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { BrandLogo } from "@/components/brand/brand-logo"
@@ -8,6 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { auth } from "@/lib/auth"
 
 async function GetToKnowContent() {
+  await connection()
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect("/login")
 

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"
@@ -76,10 +77,13 @@ export function LoginForm({ oauthError, verified }: { oauthError?: string; verif
 
   return (
     <main className="flex min-h-dvh flex-col items-center bg-background px-5 pb-12 pt-20 text-foreground sm:pt-53">
-      <h1 className="text-xl font-medium leading-6"><BrandLogo /></h1>
+      <Link href="/" className="text-xl font-medium leading-10 focus-visible:outline-2 focus-visible:outline-ring"><BrandLogo /></Link>
       <div className="mt-12.75 w-full max-w-60">
         {verified && <p role="status" className="mb-4 text-sm text-muted-foreground">Email verified. You can now sign in.</p>}
-        <Button type="button" variant="outline" className="w-full" onClick={signInWithGoogle} disabled={pending}>Continue with Google</Button>
+        <Button type="button" variant="outline" className="w-full" onClick={signInWithGoogle} disabled={pending}>
+          <Image src="/assets/icons/google.svg" alt="" width={32} height={32} className="size-4" />
+          Continue with Google
+        </Button>
         <div className="my-6 flex items-center gap-3 text-muted-foreground">
           <span aria-hidden="true" className="h-px flex-1 bg-border" />
           <span className="font-mono text-xs">OR</span>
