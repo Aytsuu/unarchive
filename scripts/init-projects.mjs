@@ -48,6 +48,7 @@ export async function initializeProjectsCollection(db) {
   const projects = db.collection("projects")
   await projects.createIndex({ ownerId: 1, createdAt: -1 })
   await projects.createIndex({ createdAt: -1 })
+  await projects.createIndex({ referenceProjectIds: 1 })
   return created
 }
 

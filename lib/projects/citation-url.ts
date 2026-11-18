@@ -4,7 +4,7 @@ export function canonicalProjectUrl(baseUrl: string, projectId: string, version?
   try {
     const base = new URL(baseUrl)
     if (!["http:", "https:"].includes(base.protocol) || base.username || base.password) return ""
-    return new URL(`/projects/${projectId.toLowerCase()}${version === undefined ? "" : `/versions/${version}`}`, base.origin).href
+    return new URL(`/projects/${projectId.toLowerCase()}${version === undefined ? "" : `/v/${version}`}`, base.origin).href
   } catch {
     return ""
   }

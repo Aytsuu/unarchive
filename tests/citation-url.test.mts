@@ -10,6 +10,6 @@ test("uses the configured origin and validates the project identifier", () => {
 })
 
 test("canonical version URLs identify a valid immutable version", () => {
-  assert.equal(canonicalProjectUrl("https://unarchive.example", "abcdef0123456789abcdef01", 2), "https://unarchive.example/projects/abcdef0123456789abcdef01/versions/2")
+  assert.equal(canonicalProjectUrl("https://unarchive.example", "abcdef0123456789abcdef01", 2), "https://unarchive.example/projects/abcdef0123456789abcdef01/v/2")
   for (const version of [0, -1, 1.5, NaN, Number.MAX_SAFE_INTEGER + 1]) assert.equal(canonicalProjectUrl("https://unarchive.example", "abcdef0123456789abcdef01", version), "")
 })

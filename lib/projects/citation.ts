@@ -51,8 +51,7 @@ export function createCitation(input: CitationInput): CitationResult {
   if (!institution) missing.push("institution")
   if (missing.length) return { ok: false, missing }
   const beforeTitle = `${authorList(authors)} (${year}). `
-  const version = Number.isSafeInteger(input.version) && input.version! > 0 ? ` (Version ${input.version})` : ""
   const description = projectType ? ` [${projectType}, ${institution}].` : `. ${institution}.`
-  const afterTitle = `${version}${description} Unarchive.${url ? ` ${url}` : ""}`
+  const afterTitle = `${description} Unarchive.${url ? ` ${url}` : ""}`
   return { ok: true, beforeTitle, title, afterTitle, text: `${beforeTitle}${title}${afterTitle}` }
 }

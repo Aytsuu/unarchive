@@ -5,14 +5,16 @@ import { HeaderActions } from "@/components/home/header-actions"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { StarIcon, ViewIcon } from "@hugeicons/core-free-icons"
+import { PencilEdit02Icon, StarIcon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProjectMetrics, type ProjectMetricsValue } from "@/components/projects/project-metrics"
 import { ProjectSaveButton } from "@/components/projects/project-save-button"
 import { ProjectTopics } from "@/components/projects/project-topics"
+import { ArchivedSnapshotBanner } from "@/components/projects/archived-snapshot-banner"
 import { ProjectCitation } from "@/components/projects/project-citation"
-import { ProjectVersionHistory, type ProjectVersionSummary } from "@/components/projects/project-version-history"
+import { RelatedProjectSection } from "@/components/projects/related-project-card"
 import type { CitationInput } from "@/lib/projects/citation"
+import type { RelatedProjectCard } from "@/lib/projects/related-projects"
 
 export type ProjectDetail = {
   id: string
@@ -25,13 +27,15 @@ export type ProjectDetail = {
   dateEnded?: string
   contributors?: string[]
   links?: string[]
-  references?: { id: string; title: string }[]
+  references?: RelatedProjectCard[]
+  citedBy?: RelatedProjectCard[]
   demoCount: number
   date: { label: string; iso: string } | null
   metrics: ProjectMetricsValue
   citation: CitationInput
   demoBase?: string
-  versionHistory?: { versions: ProjectVersionSummary[]; nextBefore: number | null; displayedVersion: number; latestVersion: number; canEdit: boolean }
+  archivedSnapshot?: { publishedAt: string }
+  canEdit?: boolean
   canPropose: boolean
 }
 
@@ -58,7 +62,9 @@ function InfoCard({ title, children, className }: { title: string; children?: Re
 }
 
 export function ProjectDetailView({ project, user }: { project: ProjectDetail; user: HomeUser | null }) {
-  const propose = !user || project.canPropose ? <Link href={user ? `/projects/${project.id}/submit-proposal` : "/login"} className={buttonVariants()}>Submit a Proposal</Link> : null
+  const propose = project.archivedSnapshot || (user && !project.canPropose) ? null : <Link href={user ? `/projects/${project.id}/submit-proposal` : "/login"} className={buttonVariants()}>Submit a Proposal</Link>
+  const edit = project.canEdit ? <Link href={`/projects/${project.id}/edit`} className={buttonVariants({ variant: "secondary" })}><HugeiconsIcon icon={PencilEdit02Icon} size={16} data-icon="inline-start" aria-hidden="true" />Edit project</Link> : null
+  const actions = <>{edit}{propose}</>
   return (
     <main className="min-h-dvh bg-background pb-20 text-foreground">
       <header className="flex w-full items-center justify-between gap-4 px-5 pt-9.25 sm:pl-7.5 sm:pr-8.5">
@@ -77,24 +83,27 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
       </header>
 
       <article className="mx-auto mt-12.75 w-full max-w-360 px-5 lg:pl-21.25 lg:pr-12.5">
+        {project.archivedSnapshot && <ArchivedSnapshotBanner projectId={project.id} publishedAt={project.archivedSnapshot.publishedAt} />}
         <div className="flex min-h-8.75 flex-wrap items-center gap-x-4 gap-y-3">
           <ProjectTopics topics={project.topics ?? []} />
-          <div className="ml-auto">{user ? <ProjectMetrics key={project.id} projectId={project.id} title={project.title} scope={user.id} initial={project.metrics} trailing={propose} /> : <div className="flex flex-wrap items-center justify-end gap-3.25">
+          <div className="ml-auto">{user ? <ProjectMetrics key={project.id} projectId={project.id} title={project.title} scope={user.id} initial={project.metrics} trailing={actions} /> : <div className="flex flex-wrap items-center justify-end gap-3.25">
             <span className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm" aria-label={`${project.metrics.views} views`}><HugeiconsIcon icon={ViewIcon} size={15} aria-hidden="true" />{project.metrics.views}</span>
             <span className="inline-flex h-7 min-w-14.75 items-center justify-center gap-1.5 rounded-full border border-border px-2 text-sm" aria-label={`${project.metrics.stars} stars`}><HugeiconsIcon icon={StarIcon} size={15} aria-hidden="true" />{project.metrics.stars}</span>
             <ProjectSaveButton projectId={project.id} title={project.title} scope="guest" compact />
-            {propose}
+            {actions}
           </div>}</div>
         </div>
         <div className="mt-2.75 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,439px)] lg:gap-16">
         <div className="min-w-0">
-          <h1 className="wrap-break-word text-[28px] font-medium leading-tight">{project.title}</h1>
-          {project.description && <p className="mt-4 whitespace-pre-wrap wrap-break-word text-xl font-medium">{project.description}</p>}
-          {(project.date || !!project.contributors?.length) && <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+          <h1 className="wrap-break-word text-[26px] font-medium leading-tight">{project.title}</h1>
+          {project.description && <p className="mt-2.5 whitespace-pre-wrap wrap-break-word text-base font-medium text-muted-foreground">{project.description}</p>}
+          {(project.date || !!project.contributors?.length) && <div className="mt-2.5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
             {project.date && <p>Published: <time dateTime={project.date.iso}>{project.date.label}</time></p>}
             {!!project.contributors?.length && <div className="flex flex-wrap items-center gap-2"><span>Author:</span><ul aria-label="Contributors" className="flex flex-wrap gap-1.75">{project.contributors.map((name, index) => <li key={`${index}-${name}`} className="max-w-full"><Badge variant="secondary" className="h-auto min-h-5 max-w-full whitespace-normal wrap-break-word">{name}</Badge></li>)}</ul></div>}
           </div>}
-          {project.abstract && <section className="mt-12 space-y-2"><h2 className="text-xl font-medium">Abstract</h2><p className="whitespace-pre-wrap wrap-break-word leading-relaxed">{project.abstract}</p></section>}
+          {project.abstract && <section className="mt-8 space-y-2"><h2 className="text-xl font-medium">Abstract</h2><p className="whitespace-pre-wrap wrap-break-word text-base leading-[26px]">{project.abstract}</p></section>}
+          <RelatedProjectSection title="Project Reference" headingId="project-reference" projects={project.references ?? []} />
+          <RelatedProjectSection title="Cited By" headingId="cited-by" projects={project.citedBy ?? []} />
         </div>
 
         <aside className="flex min-w-0 flex-col gap-5 lg:mt-3" aria-label="Project information">
@@ -106,9 +115,6 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
           <InfoCard title="Links" className="min-h-42.5">
             {project.links?.map((link, index) => { const href = safeLink(link); return href ? <p key={`${index}-${link}`}><a className="break-all text-primary underline underline-offset-4" href={href} target="_blank" rel="noopener noreferrer">{link}</a></p> : null })}
           </InfoCard>
-          {!!project.references?.length && <InfoCard title="Reference projects">
-            <ul className="space-y-2">{project.references.map((reference) => <li key={reference.id}><Link className="wrap-break-word text-primary underline underline-offset-4" href={`/projects/${reference.id}`}>{reference.title}</Link></li>)}</ul>
-          </InfoCard>}
           <InfoCard title="Demos" className="min-h-28.75">
             {project.demoCount > 0 && <div className="grid gap-4 sm:grid-cols-2">{Array.from({ length: project.demoCount }, (_, index) => (
               // Snapshot demo endpoints serve sanitized uploads with varying dimensions.
@@ -117,7 +123,6 @@ export function ProjectDetailView({ project, user }: { project: ProjectDetail; u
             ))}</div>}
           </InfoCard>
           <ProjectCitation {...project.citation} />
-          {project.versionHistory && <ProjectVersionHistory projectId={project.id} {...project.versionHistory} />}
         </aside>
         </div>
       </article>

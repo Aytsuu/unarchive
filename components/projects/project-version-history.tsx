@@ -48,7 +48,7 @@ export function ProjectVersionHistory({ projectId, versions, nextBefore, display
         const date = new Date(item.capturedAt)
         const dateLabel = Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat("en", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(date)
         return <li key={item.version} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <Link href={`/projects/${projectId}/versions/${item.version}`} aria-current={item.version === displayedVersion ? "page" : undefined} className="font-medium text-primary underline underline-offset-4">Version {item.version}</Link>
+          <Link href={`/projects/${projectId}/v/${item.version}`} aria-current={item.version === displayedVersion ? "page" : undefined} className="font-medium text-primary underline underline-offset-4">Version {item.version}</Link>
           <span className="text-xs text-muted-foreground">{item.kind === "legacy" ? "Legacy baseline" : item.kind === "published" ? "Published" : "Revision"}{dateLabel ? ` - ${dateLabel}` : ""}</span>
         </li>
       })}</ol>

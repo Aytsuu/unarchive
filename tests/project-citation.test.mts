@@ -49,11 +49,12 @@ test("identifies local development URLs without mislabeling hosted URLs", () => 
   assert.equal(isLocalDevelopmentUrl("https://unarchive.example/projects/123"), false)
 })
 
-test("citation identifies the specific saved version", () => {
-  const result = createCitation({ ...complete, version: 2 })
+test("citation keeps version identity in the URL rather than a title parenthetical", () => {
+  const result = createCitation({ ...complete, version: 2, url: "https://unarchive.example/projects/abcdef0123456789abcdef01/v/2" })
   assert.equal(result.ok, true)
-  assert.ok(result.text.includes("Campus resource hub (Version 2) [Thesis"))
+  assert.equal(result.text, "Rivera, A., & Santos, S. (2024). Campus resource hub [Thesis, Example University]. Unarchive. https://unarchive.example/projects/abcdef0123456789abcdef01/v/2")
+  assert.equal(result.text.includes("(Version 2)"), false)
   const invalid = createCitation({ ...complete, version: 0 })
   assert.equal(invalid.ok, true)
-  assert.ok(!invalid.text.includes("Version 0"))
+  assert.equal(invalid.text.includes("Version 0"), false)
 })

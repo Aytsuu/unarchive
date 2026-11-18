@@ -65,11 +65,9 @@ export function ProjectEditForm({ initial }: { initial: ProjectEditInitial }) {
         throw new Error(message)
       }
       setSaved(true)
-      const payload: unknown = await response.json().catch(() => null)
-      const version = payload && typeof payload === "object" && "data" in payload && payload.data && typeof payload.data === "object" && "version" in payload.data ? payload.data.version : null
+      await response.json().catch(() => null)
       await Promise.all([queryClient.invalidateQueries({ queryKey: ["project-list"] }), queryClient.invalidateQueries({ queryKey: ["project-statistics"] })])
-      const destination = typeof version === "number" && Number.isSafeInteger(version) && version > 0 ? `/projects/${initial.id}/versions/${version}` : `/projects/${initial.id}`
-      router.replace(destination)
+      router.replace(`/projects/${initial.id}`)
       router.refresh()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save changes. Please try again.")
