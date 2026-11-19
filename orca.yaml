@@ -1,0 +1,8 @@
+worktree:
+  sharedDirectories:
+    - .agents
+    - .codex
+    - .cursor
+    - .gemini
+    - contexts
+    - node_modules
