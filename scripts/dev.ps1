@@ -14,14 +14,6 @@ function Test-DevProcess {
     } catch { return $false }
 }
 
-function Test-Port {
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        $client.Connect('127.0.0.1', 3000)
-        return $true
-    } catch { return $false } finally { $client.Dispose() }
-}
-
 function Test-LocalPortListening {
     param([int]$Port)
     $client = New-Object System.Net.Sockets.TcpClient
@@ -92,6 +84,13 @@ function ConvertTo-WorktreeMongoUri {
     }
     if ($updated.Contains('?')) { return $updated + '&directConnection=true' }
     return $updated + '?directConnection=true'
+}
+
+function Resolve-DevServerPort {
+    for ($port = 3000; $port -le 3099; $port++) {
+        if (-not (Test-LocalPortListening $port)) { return $port }
+    }
+    throw 'No free dev server port is available in 3000-3099.'
 }
 
 function Write-WorktreeMongoEnv {
@@ -173,20 +172,19 @@ try {
         Write-Host "This project dev server is already running at http://localhost:$($existing.Port)."
         exit 0
     }
-    if (Test-Port) {
-        throw 'Port 3000 is already in use by another process. Stop it before starting this project.'
-    }
+    $devPort = Resolve-DevServerPort
 
     New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
     $next = Join-Path $root 'node_modules\next\dist\bin\next'
-    $process = Start-Process -FilePath 'node.exe' -ArgumentList @("`"$next`"", 'dev', '--port', '3000') -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $stateDir 'dev.log') -RedirectStandardError (Join-Path $stateDir 'dev-error.log')
+    $process = Start-Process -FilePath 'node.exe' -ArgumentList @("`"$next`"", 'dev', '--port', "$devPort") -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $stateDir 'dev.log') -RedirectStandardError (Join-Path $stateDir 'dev-error.log')
     @{ pid = $process.Id; startTicks = $process.StartTime.ToUniversalTime().Ticks } | ConvertTo-Json | Set-Content -Encoding ASCII $stateFile
     $deadline = (Get-Date).AddSeconds(90)
     do {
         Start-Sleep -Seconds 1
         if (-not (Test-DevProcess)) { throw 'The dev server exited. Check .stack/dev-error.log and .stack/dev.log.' }
-        if ((Test-Port) -and $null -ne (Get-ProjectDevServer -ProjectRoot $root)) {
-            Write-Host 'Dev server is running at http://localhost:3000'
+        $server = Get-ProjectDevServer -ProjectRoot $root
+        if ((Test-LocalPortListening $devPort) -and $null -ne $server -and $server.Port -eq $devPort) {
+            Write-Host "Dev server is running at http://localhost:$devPort"
             exit 0
         }
     } while ((Get-Date) -lt $deadline)
