@@ -11,7 +11,8 @@ try {
 }
 if (!status) {
   try {
-    admin.runCommand({ replSetInitiate: { _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] } })
+    const host = process.env.MONGO_REPLICA_HOST || "127.0.0.1:27017"
+    admin.runCommand({ replSetInitiate: { _id: "rs0", members: [{ _id: 0, host }] } })
   } catch (error) {
     if (error.codeName !== "AlreadyInitialized" && error.code !== 23) throw error
   }

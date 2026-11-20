@@ -4,10 +4,15 @@ services:
     restart: unless-stopped
     entrypoint: ["bash", "/opt/unarchive/mongo-entrypoint.sh"]
     ports:
-      - "127.0.0.1:27017:27017"
+      - "127.0.0.1:${MONGODB_PORT:-27017}:27017"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?Set MONGO_INITDB_ROOT_USERNAME in .env.local}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?Set MONGO_INITDB_ROOT_PASSWORD in .env.local}
+      # The container reaches its published host port through the host gateway.
+      # 127.0.0.1 inside the container is Mongo's own listener, not that port.
+      MONGO_REPLICA_HOST: host.docker.internal:${MONGODB_PORT:-27017}
     volumes:
       - mongodb_data:/data/db
       - ./scripts/mongo-entrypoint.sh:/opt/unarchive/mongo-entrypoint.sh:ro
