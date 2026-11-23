@@ -38,7 +38,7 @@ Use page-relative overlays for highlights and transform extracted PDF coordinate
 
 ## Parsing and review
 
-Validate the PDF signature, a 25 MB size limit, and a 300-page limit. Explain invalid, encrypted, unreadable, and image-only files; users can always continue manually. Parse the first 10 pages progressively and search remaining pages when title, authors, or abstract are missing. Display progress, cancel stale work on replacement or removal, and release document resources.
+Validate the PDF signature, a 100 MB size limit, and a 300-page limit. Explain invalid, encrypted, unreadable, and image-only files; users can always continue manually. Parse the first 10 pages progressively and search remaining pages when title, authors, or abstract are missing. Display progress, cancel stale work on replacement or removal, and release document resources.
 
 Use label recognition, layout and typography, section boundaries, and contextual ranking together. Candidate results retain their value, score, and page-relative source locations so users can inspect alternatives. Recognize variants such as “Presented by,” “Proponents,” “Executive Summary,” and “Buod.” Consider cover placement, visual prominence, alignment, isolation, repetition, and plausible title length. Penalize candidates in tables of contents and bibliographies and distinguish authors from advisers and panel members. Scores are heuristic signals, not probabilities or guarantees.
 
@@ -48,7 +48,7 @@ The following illustrates the intended rules registry; calibrate it against repr
 const manuscriptRules = {
   initialPageCount: 10,
   maxPages: 300,
-  maxFileBytes: 25 * 1024 * 1024,
+  maxFileBytes: 100 * 1024 * 1024,
   labels: {
     authors: ["presented by", "prepared by", "submitted by", "researchers", "proponents", "by"],
     abstract: ["abstract", "executive summary", "buod"],
