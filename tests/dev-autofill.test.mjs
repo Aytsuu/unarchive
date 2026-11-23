@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 
-const moduleUrl = new URL("../lib/dev-autofill.ts", import.meta.url).href
+const moduleUrl = new URL("../apps/web/lib/dev-autofill.ts", import.meta.url).href
 const sampleImage = new URL("../dev-data/images/example.png", import.meta.url)
 
 test("local development defaults and image reads are bounded to the fixture folder", async () => {
@@ -23,6 +23,10 @@ test("local development defaults and image reads are bounded to the fixture fold
     assert.equal(isLocalDevelopmentRequest(new Request("http://example.com/api/dev/autofill")), false)
     assert.equal((await readAutofillConfig()).fields.name, "Default")
     assert.equal((await readAutofillConfig()).images.length, 1)
+    await mkdir(join(root, "apps", "web"), { recursive: true })
+    process.chdir(join(root, "apps", "web"))
+    assert.equal((await readAutofillConfig()).fields.name, "Default", "the web app finds dev-data from the workspace root")
+    process.chdir(root)
     assert.equal((await readAutofillImage("example.png")).type, "image/png")
     assert.equal(await readAutofillImage("../example.png"), null)
     await writeFile(join(root, "dev-data", "autofill.local.json"), JSON.stringify({ fields: { name: "Local" }, images: [] }))

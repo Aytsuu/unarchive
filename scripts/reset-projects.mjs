@@ -5,9 +5,9 @@ import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { validateLocalTarget } from "./reset-auth.mjs"
-import { PROJECT_DEMO_KEY_PATTERN } from "../lib/project-storage-keys.mjs"
+import { PROJECT_DEMO_KEY_PATTERN } from "../apps/web/lib/project-storage-keys.mjs"
 
-const collections = ["projectViews", "projectStars", "projectSaves", "projectVersions", "projects"]
+const collections = ["projectViews", "projectStars", "projectSaves", "projectVersions", "projectSubmissions", "projects"]
 class ProjectResetError extends Error {}
 
 export async function deleteDemosFromR2(keys, env = process.env, createClient = (options) => new S3Client(options)) {
@@ -33,15 +33,16 @@ async function deleteSnapshot(collection, ids) {
 }
 
 export async function resetProjectData(db, onDeleted = () => {}, deleteDemos = deleteDemosFromR2) {
-  const [projects, versions] = await Promise.all([
+  const [projects, versions, submissions] = await Promise.all([
     db.collection("projects").find({}, { projection: { _id: 1, demos: 1 } }).toArray(),
     db.collection("projectVersions").find({}, { projection: { _id: 1, snapshot: 1 } }).toArray(),
+    db.collection("projectSubmissions").find({}, { projection: { _id: 1, snapshot: 1 } }).toArray(),
   ])
   const demoKeys = new Set()
   function collectDemos(demos, required = false) {
     if (demos === undefined && !required) return
     if (!Array.isArray(demos) || demos.some((key) => typeof key !== "string" || !PROJECT_DEMO_KEY_PATTERN.test(key))) {
-      throw new ProjectResetError("A project or version contains an invalid demo image key. No database records were deleted.")
+      throw new ProjectResetError("A project, version, or submission contains an invalid demo image key. No database records were deleted.")
     }
     for (const key of demos) demoKeys.add(key)
   }
@@ -52,9 +53,16 @@ export async function resetProjectData(db, onDeleted = () => {}, deleteDemos = d
     }
     collectDemos(version.snapshot.demos, true)
   }
+  for (const submission of submissions) {
+    if (!submission.snapshot || typeof submission.snapshot !== "object" || Array.isArray(submission.snapshot)) {
+      throw new ProjectResetError("A project submission has an invalid snapshot. No database records were deleted.")
+    }
+    collectDemos(submission.snapshot.demos)
+  }
   const snapshots = new Map([
     ["projects", projects.map((project) => project._id)],
     ["projectVersions", versions.map((version) => version._id)],
+    ["projectSubmissions", submissions.map((submission) => submission._id)],
   ])
   for (const name of ["projectViews", "projectStars", "projectSaves"]) {
     const records = await db.collection(name).find({}, { projection: { _id: 1 } }).toArray()
@@ -80,7 +88,7 @@ async function main() {
     process.exitCode = 1
     return
   }
-  console.log(`This permanently deletes all projects, versions, views, stars, and saves in local database "${database}".`)
+  console.log(`This permanently deletes all projects, submissions, versions, views, stars, and saves in local database "${database}".`)
   console.log(`Collections: ${collections.join(", ")}`)
   console.log(`Demo images referenced by these projects or their versions will also be permanently deleted from R2 bucket "${process.env.R2_BUCKET_NAME || "not configured"}".`)
   console.log("Stop the app before continuing, but leave MongoDB running.")

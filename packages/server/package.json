@@ -1,0 +1,8 @@
+{
+  "name": "@unarchive/server",
+  "private": true,
+  "exports": {
+    "./auth-config": "./auth-config.ts",
+    "./mongodb": "./mongodb.ts"
+  }
+}
