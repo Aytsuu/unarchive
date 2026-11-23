@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { TERMS, PRIVACY, CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION, PUBLISH_CONFIRMATION_TEXT, PUBLISH_CONFIRMATION_TEXT_VERSION } from "../lib/legal/policy.ts"
+import { TERMS, PRIVACY, CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION, PUBLISH_CONFIRMATION_TEXT, PUBLISH_CONFIRMATION_TEXT_VERSION } from "../apps/web/lib/legal/policy.ts"
 
 test("terms and privacy documents expose versioned required sections", () => {
   assert.equal(TERMS.type, "terms")

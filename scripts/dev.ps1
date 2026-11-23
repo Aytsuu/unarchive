@@ -5,12 +5,11 @@ $stateFile = Join-Path $stateDir 'dev-process.json'
 . (Join-Path $PSScriptRoot 'stack-common.ps1')
 Set-Location $root
 
-function Test-DevProcess {
-    if (-not (Test-Path -LiteralPath $stateFile)) { return $false }
+function Test-TrackedProcess {
+    param([int]$ProcessId, [long]$StartTicks)
     try {
-        $state = Get-Content -Raw -LiteralPath $stateFile | ConvertFrom-Json
-        $process = Get-Process -Id $state.pid -ErrorAction Stop
-        return $process.StartTime.ToUniversalTime().Ticks -eq [long]$state.startTicks
+        $process = Get-Process -Id $ProcessId -ErrorAction Stop
+        return $process.StartTime.ToUniversalTime().Ticks -eq $StartTicks
     } catch { return $false }
 }
 
@@ -86,11 +85,12 @@ function ConvertTo-WorktreeMongoUri {
     return $updated + '?directConnection=true'
 }
 
-function Resolve-DevServerPort {
-    for ($port = 3000; $port -le 3099; $port++) {
+function Resolve-FreePort {
+    param([int]$Start, [int]$End)
+    for ($port = $Start; $port -le $End; $port++) {
         if (-not (Test-LocalPortListening $port)) { return $port }
     }
-    throw 'No free dev server port is available in 3000-3099.'
+    throw "No free dev server port is available in ${Start}-${End}."
 }
 
 function Write-WorktreeMongoEnv {
@@ -167,29 +167,79 @@ try {
     & npm.cmd install --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) { throw 'npm install failed.' }
 
-    $existing = Get-ProjectDevServer -ProjectRoot $root
-    if ($null -ne $existing) {
-        Write-Host "This project dev server is already running at http://localhost:$($existing.Port)."
-        exit 0
+    foreach ($line in [IO.File]::ReadAllLines((Join-Path $root '.env.local'))) {
+        if ($line -match '^\s*#' -or $line -notmatch '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$') { continue }
+        $name = $Matches[1]
+        $value = $Matches[2]
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+        Set-Item -Path "Env:$name" -Value $value
     }
-    $devPort = Resolve-DevServerPort
+
+    $running = @(Get-ProjectDevServers -ProjectRoot $root)
+    $web = $running | Where-Object { $_.Port -ge 3000 -and $_.Port -le 3099 } | Select-Object -First 1
+    $moderator = $running | Where-Object { $_.Port -ge 3100 -and $_.Port -le 3199 } | Select-Object -First 1
+    $webPort = if ($web) { [int]$web.Port } else { Resolve-FreePort 3000 3099 }
+    $moderatorPort = if ($moderator) { [int]$moderator.Port } else { Resolve-FreePort 3100 3199 }
 
     New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+    @{ web = $webPort; moderator = $moderatorPort } | ConvertTo-Json | Set-Content -Encoding ASCII (Join-Path $stateDir 'ports.json')
+    $env:WEB_APP_URL = "http://localhost:$webPort"
+    $env:MODERATOR_APP_URL = "http://localhost:$moderatorPort"
+    $env:BETTER_AUTH_URL = "http://localhost:$webPort"
     $next = Join-Path $root 'node_modules\next\dist\bin\next'
-    $process = Start-Process -FilePath 'node.exe' -ArgumentList @("`"$next`"", 'dev', '--port', "$devPort") -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $stateDir 'dev.log') -RedirectStandardError (Join-Path $stateDir 'dev-error.log')
-    @{ pid = $process.Id; startTicks = $process.StartTime.ToUniversalTime().Ticks } | ConvertTo-Json | Set-Content -Encoding ASCII $stateFile
-    $deadline = (Get-Date).AddSeconds(90)
+    $started = @()
+
+    function Start-StackDevServer {
+        param([string]$Name, [int]$Port, [string]$WorkingDirectory)
+        Write-Host "Starting the $Name dev server..."
+        $process = Start-Process -FilePath 'node.exe' -ArgumentList @("`"$next`"", 'dev', '--port', "$Port") -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $stateDir "$Name.log") -RedirectStandardError (Join-Path $stateDir "$Name-error.log")
+        return [pscustomobject]@{ name = $Name; pid = $process.Id; startTicks = $process.StartTime.ToUniversalTime().Ticks; port = $Port }
+    }
+
+    if ($web) { Write-Host "Web dev server is already running at http://localhost:$webPort." }
+    else { $started += Start-StackDevServer -Name 'web' -Port $webPort -WorkingDirectory (Join-Path $root 'apps\web') }
+    if ($moderator) { Write-Host "Moderator dev server is already running at http://localhost:$moderatorPort." }
+    else { $started += Start-StackDevServer -Name 'moderator' -Port $moderatorPort -WorkingDirectory (Join-Path $root 'apps\moderator') }
+
+    $records = @()
+    foreach ($server in @($web, $moderator)) {
+        if (-not $server) { continue }
+        $current = Get-Process -Id $server.ProcessId
+        $records += [pscustomobject]@{ name = $server.Name; pid = $server.ProcessId; startTicks = $current.StartTime.ToUniversalTime().Ticks; port = [int]$server.Port }
+    }
+    foreach ($server in @($started)) {
+        $records += [pscustomobject]@{ name = $server.name; pid = $server.pid; startTicks = $server.startTicks; port = $server.port }
+    }
+    @{ servers = @($records) } | ConvertTo-Json -Depth 4 | Set-Content -Encoding ASCII $stateFile
+
+    if (@($started).Count -eq 0) {
+        Write-Host "Web app is running at http://localhost:$webPort"
+        Write-Host "Moderator app is running at http://localhost:$moderatorPort"
+        exit 0
+    }
+
+    $deadline = (Get-Date).AddSeconds(180)
     do {
         Start-Sleep -Seconds 1
-        if (-not (Test-DevProcess)) { throw 'The dev server exited. Check .stack/dev-error.log and .stack/dev.log.' }
-        $server = Get-ProjectDevServer -ProjectRoot $root
-        if ((Test-LocalPortListening $devPort) -and $null -ne $server -and $server.Port -eq $devPort) {
-            Write-Host "Dev server is running at http://localhost:$devPort"
+        $ready = $true
+        foreach ($server in @($started)) {
+            if (-not (Test-TrackedProcess -ProcessId $server.pid -StartTicks $server.startTicks)) {
+                throw "The $($server.name) dev server exited. Check .stack/$($server.name)-error.log and .stack/$($server.name).log."
+            }
+            if (-not (Test-LocalPortListening $server.port)) { $ready = $false }
+        }
+        if ($ready) {
+            Write-Host "Web app is running at http://localhost:$webPort"
+            Write-Host "Moderator app is running at http://localhost:$moderatorPort"
             exit 0
         }
     } while ((Get-Date) -lt $deadline)
-    if (Test-DevProcess) { & taskkill.exe /PID $process.Id /T /F | Out-Null }
-    throw 'Timed out waiting for the dev server. Check .stack/dev-error.log and .stack/dev.log.'
+    foreach ($server in @($started)) {
+        if (Test-TrackedProcess -ProcessId $server.pid -StartTicks $server.startTicks) { & taskkill.exe /PID $server.pid /T /F | Out-Null }
+    }
+    throw 'Timed out waiting for the dev servers. Check .stack/web-error.log and .stack/moderator-error.log.'
 } catch {
     Write-Error $_
     exit 1

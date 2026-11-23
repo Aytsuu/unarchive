@@ -2,8 +2,12 @@
   "name": "my-app",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
+    "dev": "npm run dev -w @unarchive/web",
     "stack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1",
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop.ps1",
     "stop:docker": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop.ps1 --docker-quit",
@@ -11,9 +15,10 @@
     "reset:auth": "node --env-file=.env.local scripts/reset-auth.mjs",
     "reset:projects": "node --env-file=.env.local scripts/reset-projects.mjs",
     "init:projects": "node --env-file=.env.local scripts/init-projects.mjs",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "seed:moderation": "node --env-file=.env.local scripts/seed-moderation.mjs",
+    "build": "npm run build -w @unarchive/web",
+    "start": "npm run start -w @unarchive/web",
+    "lint": "npm run lint -w @unarchive/web"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",

@@ -9,6 +9,8 @@
 
 # next.js
 /.next/
+apps/web/.next/
+apps/moderator/.next/
 /out/
 
 # production

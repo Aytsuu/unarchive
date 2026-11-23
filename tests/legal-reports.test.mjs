@@ -1,7 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { parseContentReport, REPORT_CATEGORIES } from "../lib/legal/reports.ts"
-import { isLegalAdmin } from "../lib/legal/admin.ts"
+import { parseContentReport, REPORT_CATEGORIES } from "../apps/web/lib/legal/reports.ts"
+import { isLegalAdmin } from "../apps/web/lib/legal/admin.ts"
 
 test("content reports require a known category and bounded details", () => {
   assert.deepEqual(REPORT_CATEGORIES, ["copyright", "authorship", "contributor", "confidential", "privacy", "policy"])
