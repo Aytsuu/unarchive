@@ -24,7 +24,7 @@ async function main() {
     console.log("Dry run only. Pass --apply to capture legacy project baselines in the configured local database.")
     return
   }
-  const { captureLegacyBaseline } = await import(new URL("../lib/projects/versions.ts", import.meta.url).href)
+  const { captureLegacyBaseline } = await import(new URL("../apps/web/lib/projects/versions.ts", import.meta.url).href)
   const client = new MongoClient(uri, { directConnection: true, serverSelectionTimeoutMS: 5000 })
   try {
     await client.connect()

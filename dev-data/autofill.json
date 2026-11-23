@@ -17,6 +17,7 @@
     "publish-accuracy": true,
     "signup-terms": true,
     "I accept Unarchive's Terms & Conditions.": true,
+    "I accept Unarchive's Terms & Conditions and Privacy Policy.": true,
     "I confirm that I have the necessary rights and permissions to publish this project and its materials.": true,
     "I confirm that the information is accurate and that I am authorized to publicly share the contributor details provided.": true
   },

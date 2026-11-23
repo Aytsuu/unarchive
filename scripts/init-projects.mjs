@@ -2,7 +2,7 @@ import { MongoClient } from "mongodb"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { validateLocalTarget } from "./reset-auth.mjs"
-import { PROJECT_TOPICS } from "../lib/project-topics.mjs"
+import { PROJECT_TOPICS } from "../apps/web/lib/project-topics.mjs"
 
 const projectValidator = {
   $jsonSchema: {

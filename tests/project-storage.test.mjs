@@ -4,7 +4,7 @@ import { createServer } from "node:http"
 import { S3Client } from "@aws-sdk/client-s3"
 import sharp from "sharp"
 
-const { createProjectStorage, ProjectStorageValidationError } = await import(new URL("../lib/project-storage.ts", import.meta.url).href)
+const { createProjectStorage, ProjectStorageValidationError } = await import(new URL("../apps/web/lib/project-storage.ts", import.meta.url).href)
 
 test("validates, sanitizes and stores demo images with generated keys", async () => {
   const commands = []
