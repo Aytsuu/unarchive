@@ -179,10 +179,6 @@ function textList(value) {
   return Array.isArray(value) ? value.filter((item) => typeof item === "string" && item.trim()).map((item) => item) : []
 }
 
-function duplicateKey(error) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === 11000
-}
-
 export function publishedProjectFromSubmission(record, publishedAt) {
   if (!record?._id) throw new Error("A submission needs an id.")
   if (typeof record.ownerId !== "string" || !record.ownerId.trim()) throw new Error("A submission needs an owner.")
@@ -190,7 +186,7 @@ export function publishedProjectFromSubmission(record, publishedAt) {
   if (!snapshot || typeof snapshot.title !== "string" || !snapshot.title.trim()) throw new Error("A submission needs a title.")
   if (!(publishedAt instanceof Date)) throw new Error("A publication needs a time.")
   const project = {
-    _id: record._id,
+    _id: record.projectId ?? record._id,
     ownerId: record.ownerId,
     projectType: typeof snapshot.projectType === "string" && snapshot.projectType.trim() ? snapshot.projectType : "thesis",
     title: snapshot.title,
@@ -222,38 +218,67 @@ export function publishedVersionFromProject(project, publishedAt) {
   return { projectId: project._id, version: 1, kind: "published", capturedAt: publishedAt, snapshot }
 }
 
-export async function publishApprovedSubmission(db, record) {
+function publishedReferenceEvents(project, occurredAt) {
+  const seen = new Set()
+  const referencedIds = []
+  for (const id of project.referenceProjectIds ?? []) {
+    const normalized = String(id).toLowerCase()
+    if (!/^[a-f\d]{24}$/.test(normalized) || seen.has(normalized)) continue
+    seen.add(normalized)
+    referencedIds.push(normalized)
+  }
+  const projectId = project._id.toHexString()
+  return referencedIds.map((referencedProjectId) => ({
+    eventId: `project.referenced:${projectId}:1:${referencedProjectId}`,
+    type: "project.referenced",
+    schemaVersion: 1,
+    subjectId: referencedProjectId,
+    actorId: project.ownerId,
+    referencingProjectId: projectId,
+    referencedProjectId,
+    occurredAt,
+    state: "pending",
+    attempts: 0,
+    nextAttemptAt: occurredAt,
+  }))
+}
+
+export async function publishApprovedSubmission(db, record, session, allowExisting = false) {
   const publishedAt = record?.decidedAt instanceof Date ? record.decidedAt : record?.submittedAt instanceof Date ? record.submittedAt : new Date()
   const project = publishedProjectFromSubmission(record, publishedAt)
   const projects = db.collection("projects")
   const versions = db.collection("projectVersions")
-  const existingProject = await projects.findOne({ _id: project._id }, { projection: { _id: 1 }, maxTimeMS: 3000 })
-  let insertedProject = false
-  try {
-    if (!existingProject) {
-      await projects.insertOne(project)
-      insertedProject = true
-    }
-    const existingVersion = await versions.findOne({ projectId: project._id, version: 1 }, { projection: { _id: 1 }, maxTimeMS: 3000 })
-    if (!existingVersion) await versions.insertOne(publishedVersionFromProject(project, publishedAt))
-  } catch (error) {
-    if (duplicateKey(error)) return
-    if (insertedProject) await projects.deleteOne({ _id: project._id })
-    throw error
-  }
+  const existingProject = await projects.findOne({ _id: project._id }, { projection: { _id: 1, ownerId: 1 }, session })
+  if (existingProject && existingProject.ownerId !== project.ownerId) throw new Error("Project ownership conflict.")
+  if (existingProject && !allowExisting) throw new Error("Project already exists.")
+  if (!existingProject) await projects.insertOne(project, { session })
+  const existingVersion = await versions.findOne({ projectId: project._id, version: 1 }, { projection: { _id: 1 }, session })
+  if (existingVersion && !allowExisting) throw new Error("Project version already exists.")
+  if (!existingVersion) await versions.insertOne(publishedVersionFromProject(project, publishedAt), { session })
+  const events = !existingProject ? publishedReferenceEvents(project, publishedAt) : []
+  if (events.length) await db.collection("notificationEvents").insertMany(events, { session })
 }
 
-export async function promoteApprovedSubmissions(db) {
+export async function promoteApprovedSubmissions(db, client) {
   const records = await db.collection(SUBMISSIONS_COLLECTION).find({ status: "approved" }, { maxTimeMS: 3000 }).toArray()
-  const ids = records.map((record) => record._id).filter(Boolean)
+  const ids = records.map((record) => record.projectId ?? record._id).filter(Boolean)
   if (!ids.length) return 0
   const existing = await db.collection("projects").find({ _id: { $in: ids } }, { projection: { _id: 1 }, maxTimeMS: 3000 }).toArray()
   const published = new Set(existing.map((project) => project._id.toString()))
+  const versions = await db.collection("projectVersions").find({ projectId: { $in: ids }, version: 1 }, { projection: { projectId: 1 }, maxTimeMS: 3000 }).toArray()
+  const versioned = new Set(versions.map((version) => version.projectId.toString()))
   let count = 0
   for (const record of records) {
-    if (!record?._id || published.has(record._id.toString())) continue
+    const projectId = record?.projectId ?? record?._id
+    if (!record?._id || !projectId || (published.has(projectId.toString()) && versioned.has(projectId.toString()))) continue
     if (!record.snapshot || typeof record.snapshot.title !== "string" || !record.snapshot.title.trim()) continue
-    await publishApprovedSubmission(db, record)
+    const session = client.startSession()
+    try {
+      await session.withTransaction(async () => {
+        const current = await db.collection(SUBMISSIONS_COLLECTION).findOne({ _id: record._id, status: "approved" }, { session })
+        if (current) await publishApprovedSubmission(db, current, session, true)
+      })
+    } finally { await session.endSession() }
     count += 1
   }
   return count
@@ -265,7 +290,7 @@ export async function getPendingSubmission(db, id) {
   return submission
 }
 
-export async function decideSubmission(db, input) {
+export async function decideSubmission(db, input, client) {
   const objectId = submissionObjectId(input?.id)
   if (!objectId) return { ok: false, error: "not_found" }
   const moderatorId = typeof input?.moderatorId === "string" ? input.moderatorId.trim() : ""
@@ -282,35 +307,45 @@ export async function decideSubmission(db, input) {
     update.status = "changes_requested"
     update.revisionReason = revisionReason
   }
-  const result = await db.collection(SUBMISSIONS_COLLECTION).updateOne(
-    { _id: objectId, status: "pending" },
-    { $set: update },
-  )
-  if (result.matchedCount === 1) {
-    if (update.status === "approved") {
-      const record = await db.collection(SUBMISSIONS_COLLECTION).findOne({ _id: objectId }, { maxTimeMS: 3000 })
-      if (record?.snapshot && typeof record.snapshot.title === "string" && record.snapshot.title.trim()) {
-        try {
-          await publishApprovedSubmission(db, record)
-        } catch (error) {
-          const published = await db.collection("projects").findOne({ _id: objectId }, { projection: { _id: 1 }, maxTimeMS: 3000 })
-          if (!published) {
-            await db.collection(SUBMISSIONS_COLLECTION).updateOne(
-              { _id: objectId, status: "approved", decidedBy: moderatorId },
-              { $set: { status: "pending" }, $unset: { decidedBy: "", decidedAt: "" } },
-            )
-          }
-          console.error("Approved submission could not be published")
-          throw error
-        }
+  await db.collection("notificationEvents").createIndex({ eventId: 1 }, { unique: true, name: "notification_event_id" })
+  const session = client.startSession()
+  try {
+    return await session.withTransaction(async () => {
+      const submissions = db.collection(SUBMISSIONS_COLLECTION)
+      const record = await submissions.findOne({ _id: objectId }, { session })
+      if (!record) return { ok: false, error: "not_found" }
+      if (record.status !== "pending") return { ok: false, error: "conflict" }
+      if (!record.snapshot || typeof record.snapshot.title !== "string" || !record.snapshot.title.trim() || !record.ownerId) throw new Error("Invalid submission.")
+      const result = await submissions.updateOne({ _id: objectId, status: "pending" }, { $set: update }, { session })
+      if (result.matchedCount !== 1) return { ok: false, error: "conflict" }
+      if (update.status === "approved") await publishApprovedSubmission(db, { ...record, ...update }, session)
+      const type = update.status === "approved" ? "project.publish_approved" : "project.revision_requested"
+      await db.collection("notificationEvents").insertOne({ eventId: `${type}:${objectId}`, type, schemaVersion: 1, subjectId: String(objectId), submissionId: String(objectId), projectId: String(record.projectId ?? objectId), recipientId: record.ownerId, actorId: moderatorId, occurredAt: decidedAt, state: "pending", attempts: 0, nextAttemptAt: decidedAt }, { session })
+      return { ok: true, status: update.status }
+    })
+  } finally { await session.endSession() }
+}
+
+export async function resubmitSubmission(client, db, input) {
+  const previousId = submissionObjectId(input?.previousId)
+  if (!previousId || !(input?.id instanceof ObjectId) || typeof input.ownerId !== "string" || !input.ownerId.trim() || typeof input.idempotencyDigest !== "string" || !input.idempotencyDigest) return { ok: false, error: "not_found" }
+  const session = client.startSession()
+  try {
+    return await session.withTransaction(async () => {
+      const submissions = db.collection(SUBMISSIONS_COLLECTION)
+      const previous = await submissions.findOne({ _id: previousId, ownerId: input.ownerId }, { session })
+      if (!previous) return { ok: false, error: "not_found" }
+      if (previous.resubmittedAs) {
+        const next = await submissions.findOne({ _id: previous.resubmittedAs, ownerId: input.ownerId }, { session })
+        if (next && next._id.equals(input.id) && next.idempotencyDigest === input.idempotencyDigest) return { ok: true, id: String(next._id), replayed: true }
+        return { ok: false, error: "conflict" }
       }
-    }
-    return { ok: true, status: update.status }
-  }
-  const existing = await db.collection(SUBMISSIONS_COLLECTION).findOne(
-    { _id: objectId },
-    { projection: { status: 1 }, maxTimeMS: 3000 },
-  )
-  if (!existing) return { ok: false, error: "not_found" }
-  return { ok: false, error: "conflict" }
+      if (previous.status !== "changes_requested") return { ok: false, error: "conflict" }
+      const document = { ...pendingSubmissionDocument(input), projectId: previous.projectId ?? previous._id, previousSubmissionId: previousId }
+      const result = await submissions.updateOne({ _id: previousId, ownerId: input.ownerId, status: "changes_requested", resubmittedAs: { $exists: false } }, { $set: { resubmittedAt: input.submittedAt, resubmittedAs: input.id } }, { session })
+      if (result.matchedCount !== 1) return { ok: false, error: "conflict" }
+      await submissions.insertOne(document, { session })
+      return { ok: true, id: String(input.id), replayed: false }
+    })
+  } finally { await session.endSession() }
 }

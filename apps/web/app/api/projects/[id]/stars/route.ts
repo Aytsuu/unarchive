@@ -1,4 +1,4 @@
-import { db } from "@/lib/mongodb"
+import { db, mongoClient } from "@/lib/mongodb"
 import { authorizeMetricsWrite, metricsError, metricsSuccess } from "@/lib/projects/metrics-api"
 import { setProjectStar } from "@/lib/projects/metrics"
 
@@ -6,7 +6,7 @@ async function setStar(request: Request, context: { params: Promise<{ id: string
   try {
     const authorized = await authorizeMetricsWrite(request, (await context.params).id, "star")
     if (authorized.response) return authorized.response
-    return metricsSuccess(await setProjectStar(db, authorized.projectId, authorized.userId, starred))
+    return metricsSuccess(await setProjectStar(db, authorized.projectId, authorized.userId, starred, mongoClient))
   } catch {
     console.error("Project star could not be updated")
     return metricsError("Unable to update your star. Please try again.", 500)

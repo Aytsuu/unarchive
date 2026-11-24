@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { decideSubmission } from "@unarchive/domain/submissions"
 import { requireModerator } from "../../../lib/gate"
 import { refreshPublicList } from "../../../lib/refresh-public-list"
-import { db } from "@unarchive/server/mongodb"
+import { db, mongoClient } from "@unarchive/server/mongodb"
 
 export type DecisionState =
   | { ok: true; status: "approved" | "changes_requested" }
@@ -23,7 +23,7 @@ export async function decideReview(_state: DecisionState, formData: FormData): P
     moderatorId: user.id,
     action,
     reason: typeof reason === "string" ? reason : "",
-  })
+  }, mongoClient)
   if (result.ok) {
     const id = typeof submissionId === "string" ? submissionId : ""
     revalidatePath(`/reviews/${id}`)

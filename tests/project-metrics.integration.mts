@@ -3,9 +3,9 @@ import { randomUUID } from "node:crypto"
 import { test } from "node:test"
 import { MongoClient, ObjectId } from "mongodb"
 
-const { getProjectMetrics, recordProjectView, setProjectStar } = await import(new URL("../lib/projects/metrics.ts", import.meta.url).href)
-const { claimMetricsAttempt } = await import(new URL("../lib/projects/metrics-rate-limit.ts", import.meta.url).href)
-const { normalizeViewIp, viewIpFromHeaders } = await import(new URL("../lib/projects/view-ip.ts", import.meta.url).href)
+const { getProjectMetrics, recordProjectView, setProjectStar } = await import(new URL("../apps/web/lib/projects/metrics.ts", import.meta.url).href)
+const { claimMetricsAttempt } = await import(new URL("../apps/web/lib/projects/metrics-rate-limit.ts", import.meta.url).href)
+const { normalizeViewIp, viewIpFromHeaders } = await import(new URL("../apps/web/lib/projects/view-ip.ts", import.meta.url).href)
 
 test("IP extraction requires a configured production proxy and normalizes addresses", () => {
   const headers = new Headers({ "x-forwarded-for": "192.0.2.1", "x-real-ip": "::ffff:192.0.2.1" })
@@ -43,11 +43,11 @@ test("views are once per project, IP and UTC day and stars are idempotent under 
     const tokens = await db.collection<{ visitId: string }>("projectViews").find({}).toArray()
     assert.equal(new Set(tokens.map((record) => record.visitId)).size, 4, "IP hashes are scoped to project and day")
 
-    await Promise.all(Array.from({ length: 8 }, () => setProjectStar(db, project, "user-a", true)))
-    await setProjectStar(db, project, "user-b", true)
+    await Promise.all(Array.from({ length: 8 }, () => setProjectStar(db, project, "user-a", true, client)))
+    await setProjectStar(db, project, "user-b", true, client)
     assert.deepEqual(await getProjectMetrics(db, project, "user-a"), { views: 3, stars: 2, starred: true })
     assert.deepEqual(await getProjectMetrics(db, project, "user-c"), { views: 3, stars: 2, starred: false })
-    await Promise.all(Array.from({ length: 8 }, () => setProjectStar(db, project, "user-a", false)))
+    await Promise.all(Array.from({ length: 8 }, () => setProjectStar(db, project, "user-a", false, client)))
     assert.deepEqual(await getProjectMetrics(db, project, "user-a"), { views: 3, stars: 1, starred: false })
   } finally {
     await client.db(name).dropDatabase()
