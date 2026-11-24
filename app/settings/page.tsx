@@ -6,6 +6,7 @@ import { Suspense } from "react"
 import { BrandLogo } from "@/components/brand/brand-logo"
 import { auth } from "@/lib/auth"
 import { GoogleLinkButton } from "@/components/auth-session/google-link-button"
+import { NotificationSettings } from "@/components/settings/notification-settings"
 
 async function SettingsContent({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await connection()
@@ -29,6 +30,7 @@ async function SettingsContent({ searchParams }: { searchParams: Promise<{ error
           </div>
           <GoogleLinkButton callbackError={Boolean(error)} />
         </div>
+        <NotificationSettings />
       </section>
     </main>
   )

@@ -5,6 +5,7 @@ import { db } from "@/lib/mongodb"
 import { metricsError, metricsSuccess } from "@/lib/projects/metrics-api"
 import { claimMetricsAttempt } from "@/lib/projects/metrics-rate-limit"
 import { parseProposalFiles, parseProposalMessage, ProposalValidationError } from "@/lib/projects/proposal-validation"
+import { requestOrigin } from "@/lib/legal/origin"
 import { createProposal, getProposalTarget } from "@/lib/projects/proposals"
 import { ProjectStorageConfigurationError, ProjectStorageValidationError, deleteProposalAttachments, saveProposalAttachments } from "@/lib/project-storage"
 
@@ -47,8 +48,8 @@ async function readMultipart(request: Request) {
 
 export async function POST(request: Request, context: Context) {
   await connection()
-  let expectedOrigin: string
-  try { expectedOrigin = new URL(process.env.BETTER_AUTH_URL ?? request.url).origin } catch { return metricsError("Submitting a proposal is temporarily unavailable.", 503) }
+  const expectedOrigin = requestOrigin(request)
+  if (!expectedOrigin) return metricsError("Submitting a proposal is temporarily unavailable.", 503)
   if (request.headers.get("origin") !== expectedOrigin) return metricsError("Invalid request origin.", 403)
 
   let attachments: string[] = []

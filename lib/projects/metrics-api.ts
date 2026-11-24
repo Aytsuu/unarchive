@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/mongodb"
+import { requestOrigin } from "@/lib/legal/origin"
 import { claimMetricsAttempt } from "@/lib/projects/metrics-rate-limit"
 
 export function metricsError(error: string, status: number, headers?: Record<string, string>) {
@@ -9,8 +10,8 @@ export function metricsError(error: string, status: number, headers?: Record<str
 
 export async function authorizeMetricsWrite(request: Request, id: string, action: "view" | "star" | "save") {
   if (!/^[a-f\d]{24}$/i.test(id)) return { response: metricsError("Project not found.", 404) }
-  let expectedOrigin: string
-  try { expectedOrigin = new URL(process.env.BETTER_AUTH_URL ?? request.url).origin } catch { return { response: metricsError("Project metrics are temporarily unavailable.", 503) } }
+  const expectedOrigin = requestOrigin(request)
+  if (!expectedOrigin) return { response: metricsError("Project metrics are temporarily unavailable.", 503) }
   if (request.headers.get("origin") !== expectedOrigin) return { response: metricsError("Invalid request origin.", 403) }
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return { response: metricsError("Please sign in to continue.", 401) }

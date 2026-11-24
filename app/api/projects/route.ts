@@ -13,6 +13,7 @@ import { claimProjectAttempt } from "@/lib/projects/rate-limit"
 import { parseProject, ProjectValidationError } from "@/lib/projects/validation"
 import { getSubmissionIdentity, InvalidIdempotencyKeyError } from "@/lib/projects/idempotency"
 import { hasAcceptedCurrentTerms } from "@/lib/legal/acceptances"
+import { requestOrigin } from "@/lib/legal/origin"
 import { ensureLegalDocuments } from "@/lib/legal/documents"
 
 const MAX_REQUEST_BYTES = 26 * 1024 * 1024
@@ -105,8 +106,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let expectedOrigin: string
-  try { expectedOrigin = new URL(process.env.BETTER_AUTH_URL ?? request.url).origin } catch { return failure("Publishing is temporarily unavailable.", 503) }
+  const expectedOrigin = requestOrigin(request)
+  if (!expectedOrigin) return failure("Publishing is temporarily unavailable.", 503)
   if (request.headers.get("origin") !== expectedOrigin) return failure("Invalid request origin.", 403)
 
   try {

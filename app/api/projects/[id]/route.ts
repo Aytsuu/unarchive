@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { ObjectId } from "mongodb"
 import { revalidateTag } from "next/cache"
 import { auth } from "@/lib/auth"
+import { requestOrigin as expectedOrigin } from "@/lib/legal/origin"
 import { db, mongoClient } from "@/lib/mongodb"
 import { PROJECT_LIST_TAG } from "@/lib/projects/listing"
 import { claimProjectAttempt } from "@/lib/projects/rate-limit"
@@ -18,9 +19,6 @@ function invalidateListing() {
   try { revalidateTag(PROJECT_LIST_TAG, { expire: 0 }) } catch { console.error("Project listing cache invalidation failed") }
 }
 function validId(id: string) { return /^[a-f\d]{24}$/i.test(id) }
-function expectedOrigin(request: Request) {
-  try { return new URL(process.env.BETTER_AUTH_URL ?? request.url).origin } catch { return null }
-}
 async function readJson(request: Request): Promise<unknown> {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "")) throw new InvalidProjectEditError("Send project details as JSON.")
   const length = request.headers.get("content-length")

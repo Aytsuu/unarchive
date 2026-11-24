@@ -43,11 +43,11 @@ test("views are once per project, IP and UTC day and stars are idempotent under 
     const tokens = await db.collection<{ visitId: string }>("projectViews").find({}).toArray()
     assert.equal(new Set(tokens.map((record) => record.visitId)).size, 4, "IP hashes are scoped to project and day")
 
-    await Promise.all(Array.from({ length: 8 }, () => setProjectStar(db, project, "user-a", true)))
-    await setProjectStar(db, project, "user-b", true)
+    await Promise.all(Array.from({ length: 8 }, () => setProjectStar(db, project, "user-a", true, client)))
+    await setProjectStar(db, project, "user-b", true, client)
     assert.deepEqual(await getProjectMetrics(db, project, "user-a"), { views: 3, stars: 2, starred: true })
     assert.deepEqual(await getProjectMetrics(db, project, "user-c"), { views: 3, stars: 2, starred: false })
-    await Promise.all(Array.from({ length: 8 }, () => setProjectStar(db, project, "user-a", false)))
+    await Promise.all(Array.from({ length: 8 }, () => setProjectStar(db, project, "user-a", false, client)))
     assert.deepEqual(await getProjectMetrics(db, project, "user-a"), { views: 3, stars: 1, starred: false })
   } finally {
     await client.db(name).dropDatabase()

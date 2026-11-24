@@ -3,10 +3,17 @@ import { mongodbAdapter } from "@better-auth/mongo-adapter"
 import { APIError, createAuthMiddleware } from "better-auth/api"
 import { emailOTP } from "better-auth/plugins"
 import { createHmac } from "node:crypto"
+import path from "node:path"
 import type { Db, MongoClient } from "mongodb"
 import { recordTermsAcceptanceByEmail } from "./legal/acceptances.ts"
 
 const RESEND_INTERVAL_MS = 3 * 60 * 1000
+
+function devCookiePrefix(): string | undefined {
+  if (process.env.NODE_ENV === "production") return undefined
+  const name = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "")
+  return name ? `ba-${name}` : "ba-dev"
+}
 
 type AuthOptions = {
   db: Db
@@ -67,6 +74,7 @@ export function createAppAuth(options: AuthOptions) {
   const auth = betterAuth({
     secret: options.secret,
     baseURL: options.baseURL,
+    ...(process.env.NODE_ENV === "production" ? {} : { trustedOrigins: ["http://localhost:*", "http://127.0.0.1:*", "http://[::1]:*"] }),
     // Provider and database errors may contain addresses, tokens or codes.
     logger: {
       level: "warn",
@@ -102,7 +110,7 @@ export function createAppAuth(options: AuthOptions) {
     account: { accountLinking: { enabled: true, disableImplicitLinking: false, requireLocalEmailVerified: true } },
     session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 },
     // The local server has no trusted proxy to authenticate forwarded headers.
-    advanced: { ipAddress: { ipAddressHeaders: [] } },
+    advanced: { ipAddress: { ipAddressHeaders: [] }, ...(devCookiePrefix() ? { cookiePrefix: devCookiePrefix() } : {}) },
     rateLimit: {
       enabled: true,
       storage: "database",

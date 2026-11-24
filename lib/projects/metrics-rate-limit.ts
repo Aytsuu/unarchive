@@ -4,7 +4,7 @@ type Limit = { _id: string; count: number; expiresAt: Date }
 const indexes = new WeakMap<Db, Promise<void>>()
 const WINDOW_MS = 60_000
 
-export async function claimMetricsAttempt(db: Db, userId: string, action: "view" | "star" | "save" | "saved-status" | "saved-list" | "proposal" | "inbox-list") {
+export async function claimMetricsAttempt(db: Db, userId: string, action: "view" | "star" | "save" | "saved-status" | "saved-list" | "proposal" | "inbox-list" | "notifications-list" | "notifications-write") {
   const collection = db.collection<Limit>("projectMetricsRateLimit")
   let index = indexes.get(db)
   if (!index) {
@@ -27,6 +27,6 @@ export async function claimMetricsAttempt(db: Db, userId: string, action: "view"
     record = await collection.findOneAndUpdate(filter, update, { returnDocument: "after" })
   }
   if (!record) throw new Error("Unable to apply project metrics rate limit")
-  const max = action === "saved-status" ? 600 : action === "view" || action === "saved-list" || action === "inbox-list" ? 120 : 60
+  const max = action === "saved-status" ? 600 : action === "view" || action === "saved-list" || action === "inbox-list" || action === "notifications-list" ? 120 : 60
   return record.count > max ? Math.max(1, Math.ceil((record.expiresAt.getTime() - now.getTime()) / 1000)) : 0
 }

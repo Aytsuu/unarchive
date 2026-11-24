@@ -11,6 +11,7 @@
     "reset:auth": "node --env-file=.env.local scripts/reset-auth.mjs",
     "reset:projects": "node --env-file=.env.local scripts/reset-projects.mjs",
     "init:projects": "node --env-file=.env.local scripts/init-projects.mjs",
+    "notifications:work": "node --experimental-strip-types --env-file=.env.local scripts/process-notifications.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
