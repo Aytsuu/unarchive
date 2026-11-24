@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import { listPendingSubmissions, promoteApprovedSubmissions } from "@unarchive/domain/submissions"
 import { requireModerator } from "../lib/gate"
 import { refreshPublicList } from "../lib/refresh-public-list"
-import { db } from "@unarchive/server/mongodb"
+import { db, mongoClient } from "@unarchive/server/mongodb"
 
 function formatSubmitted(value: string) {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
@@ -12,7 +12,7 @@ function formatSubmitted(value: string) {
 async function Queue() {
   await connection()
   const user = await requireModerator()
-  const promoted = await promoteApprovedSubmissions(db)
+  const promoted = await promoteApprovedSubmissions(db, mongoClient)
   if (promoted > 0) await refreshPublicList()
   const submissions = await listPendingSubmissions(db)
   const home = process.env.WEB_APP_URL || process.env.BETTER_AUTH_URL || "http://localhost:3000"
@@ -29,7 +29,7 @@ async function Queue() {
           <h2 className="text-base font-medium">Pending submissions</h2>
           {submissions.length === 0 ? <p className="py-10 text-sm text-muted-foreground">No submissions are waiting for review.</p> : (
             <ul className="mt-4 flex flex-col gap-3">
-              {submissions.map((submission) => (
+              {submissions.map((submission: { id: string; ownerName: string; institution: string; title: string; description: string; submittedAt: string }) => (
                 <li key={submission.id}>
                   <a href={`/reviews/${submission.id}`} className="block rounded-[20px] border border-border p-5 outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <div className="flex items-start justify-between gap-4">

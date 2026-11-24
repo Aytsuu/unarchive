@@ -1,9 +1,12 @@
 import { createHmac } from "node:crypto"
-import type { Db, ObjectId } from "mongodb"
+import type { Db, MongoClient, ObjectId } from "mongodb"
+import { ensureNotificationIndexes, insertStarOutbox } from "../notifications/outbox.ts"
 
 type ViewRecord = { projectId: ObjectId; userId: string; visitId: string; createdAt: Date }
 type StarRecord = { projectId: ObjectId; userId: string; createdAt: Date }
 const indexPromises = new WeakMap<Db, Promise<void>>()
+
+const transactionOptions = { readConcern: { level: "snapshot" as const }, writeConcern: { w: "majority" as const } }
 
 function isDuplicate(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === 11000
@@ -44,12 +47,26 @@ export async function recordProjectView(db: Db, projectId: ObjectId, ip: string,
   return views.countDocuments({ projectId }, { maxTimeMS: 3000 })
 }
 
-export async function setProjectStar(db: Db, projectId: ObjectId, userId: string, starred: boolean) {
+export async function setProjectStar(db: Db, projectId: ObjectId, userId: string, starred: boolean, client: MongoClient, now = new Date()) {
   await ensureMetricsIndexes(db)
   const stars = db.collection<StarRecord>("projectStars")
   if (starred) {
-    try { await stars.insertOne({ projectId, userId, createdAt: new Date() }) } catch (error) {
-      if (!isDuplicate(error)) throw error
+    const existing = await stars.findOne({ projectId, userId }, { projection: { _id: 1 }, maxTimeMS: 3000 })
+    if (!existing) {
+      await ensureNotificationIndexes(db)
+      const session = client.startSession()
+      try {
+        await session.withTransaction(async () => {
+          await stars.insertOne({ projectId, userId, createdAt: now }, { session })
+          await insertStarOutbox(db, session, { projectId, actorId: userId, occurredAt: now })
+        }, transactionOptions)
+      } catch (error) {
+        if (!isDuplicate(error)) throw error
+        const raced = await stars.findOne({ projectId, userId }, { projection: { _id: 1 }, maxTimeMS: 3000 })
+        if (!raced) throw error
+      } finally {
+        await session.endSession()
+      }
     }
   } else {
     await stars.deleteOne({ projectId, userId })

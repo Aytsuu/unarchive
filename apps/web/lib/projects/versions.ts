@@ -1,5 +1,6 @@
 import { ObjectId, type ClientSession, type Db, type MongoClient } from "mongodb"
 import { ensurePublicationConfirmationIndexes, publicationConfirmationDocument } from "../legal/confirmations.ts"
+import { ensureNotificationIndexes, insertReferenceOutbox } from "../notifications/outbox.ts"
 import type { ProjectInput } from "./validation"
 
 export class ProjectVersionConflictError extends Error {
@@ -107,6 +108,7 @@ export async function ensureProjectVersionIndexes(db: Db): Promise<void> {
 export async function createInitialVersionedProject(client: MongoClient, db: Db, document: VersionableProject): Promise<void> {
   await ensureProjectVersionIndexes(db)
   await ensurePublicationConfirmationIndexes(db)
+  await ensureNotificationIndexes(db)
   const capturedAt = new Date()
   const session = client.startSession()
   try {
@@ -115,6 +117,7 @@ export async function createInitialVersionedProject(client: MongoClient, db: Db,
       await db.collection<VersionableProject>("projects").insertOne({ ...document, currentVersion: 1 }, { session })
       await db.collection<ProjectVersion>("projectVersions").insertOne({ projectId: document._id, version: 1, kind: "published", capturedAt, snapshot }, { session })
       await db.collection("projectPublicationConfirmations").insertOne(publicationConfirmationDocument(document._id, document.ownerId, capturedAt), { session })
+      await insertReferenceOutbox(db, session, { projectId: document._id, version: 1, actorId: document.ownerId, occurredAt: capturedAt, previousIds: [], nextIds: snapshot.references?.map((item) => item.id) ?? snapshot.referenceProjectIds })
     }, transactionOptions)
   } finally { await session.endSession() }
 }
@@ -147,6 +150,7 @@ export async function captureLegacyBaseline(client: MongoClient, db: Db, project
 
 export async function createProjectVersion(client: MongoClient, db: Db, args: { projectId: ObjectId; ownerId: string; expectedVersion: number; project: ProjectInput; demos: string[]; editKey: string; editDigest: string }): Promise<{ version: number; replayed: boolean }> {
   await ensureProjectVersionIndexes(db)
+  await ensureNotificationIndexes(db)
   if (!Number.isSafeInteger(args.expectedVersion) || args.expectedVersion < 1 || !args.editKey || !args.editDigest) throw new ProjectVersionConflictError()
   const capturedAt = new Date()
   const session = client.startSession()
@@ -174,6 +178,7 @@ export async function createProjectVersion(client: MongoClient, db: Db, args: { 
       if (update.matchedCount !== 1) throw new ProjectVersionConflictError()
       const version = args.expectedVersion + 1
       await versions.insertOne({ projectId: args.projectId, version, kind: "revision", capturedAt, snapshot, editKey: args.editKey, editDigest: args.editDigest }, { session })
+      await insertReferenceOutbox(db, session, { projectId: args.projectId, version, actorId: args.ownerId, occurredAt: capturedAt, previousIds: current.referenceProjectIds, nextIds: snapshot.references?.map((item) => item.id) ?? snapshot.referenceProjectIds })
       return { version, replayed: false }
     }, transactionOptions)
     if (!result) throw new ProjectVersionConsistencyError()

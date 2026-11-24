@@ -23,6 +23,7 @@ async function ProfileContent() {
           <div><h2 className="text-sm text-muted-foreground">Name</h2><p>{session.user.name}</p></div>
           <div><h2 className="text-sm text-muted-foreground">Email</h2><p className="break-all">{session.user.email}</p></div>
         </div>
+        <Link href="/submissions" className="inline-block text-sm underline underline-offset-4">My submissions</Link>
       </section>
     </main>
   )

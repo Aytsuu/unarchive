@@ -4,23 +4,12 @@ import { ObjectId } from "mongodb"
 import { decideSubmission, demoSubmissions, pendingSubmissionDocument, pendingSubmissionFilter, promoteApprovedSubmissions, toQueueItem } from "../packages/domain/submissions.mjs"
 
 function memorySubmissions(records) {
-  const docs = records.map((record) => ({ ...record }))
-  return {
-    collection() {
-      return {
-        async updateOne(filter, update) {
-          const doc = docs.find((item) => item._id.equals(filter._id) && item.status === filter.status)
-          if (!doc) return { matchedCount: 0 }
-          Object.assign(doc, update.$set)
-          return { matchedCount: 1 }
-        },
-        async findOne(filter) {
-          return docs.find((item) => item._id.equals(filter._id)) ?? null
-        },
-      }
-    },
-  }
+  const db = memoryDatabase()
+  for (const record of records) db.collection("projectSubmissions").insertOne({ ownerId: "owner-1", snapshot: { title: "Project", demos: [] }, ...record })
+  return db
 }
+
+const client = { startSession: () => ({ withTransaction: (fn) => fn(), endSession: async () => {} }) }
 
 test("demo submissions stay pending and keep an immutable snapshot", () => {
   const submittedAt = new Date("2026-11-20T12:00:00.000Z")
@@ -58,14 +47,14 @@ test("approval records the moderator only while the submission is pending", asyn
   const id = new ObjectId()
   const decidedAt = new Date("2026-11-21T00:00:00.000Z")
   const db = memorySubmissions([{ _id: id, status: "pending" }])
-  const result = await decideSubmission(db, { id: id.toString(), moderatorId: "mod-1", action: "approve", decidedAt })
+  const result = await decideSubmission(db, { id: id.toString(), moderatorId: "mod-1", action: "approve", decidedAt }, client)
   assert.deepEqual(result, { ok: true, status: "approved" })
-  const stored = await db.collection().findOne({ _id: id })
+  const stored = await db.collection("projectSubmissions").findOne({ _id: id })
   assert.equal(stored.status, "approved")
   assert.equal(stored.decidedBy, "mod-1")
   assert.equal(stored.decidedAt, decidedAt)
   assert.equal(stored.revisionReason, undefined)
-  assert.deepEqual(await decideSubmission(db, { id: id.toString(), moderatorId: "mod-2", action: "approve", decidedAt }), { ok: false, error: "conflict" })
+  assert.deepEqual(await decideSubmission(db, { id: id.toString(), moderatorId: "mod-2", action: "approve", decidedAt }, client), { ok: false, error: "conflict" })
   assert.equal(stored.decidedBy, "mod-1")
 })
 
@@ -74,7 +63,7 @@ test("a revision stores the explanation and a blank reason does not decide it", 
   const db = memorySubmissions([{ _id: id, status: "pending" }])
   const blank = await decideSubmission(db, { id: id.toString(), moderatorId: "mod-1", action: "request_revision", reason: "   " })
   assert.deepEqual(blank, { ok: false, error: "reason_required" })
-  const pending = await db.collection().findOne({ _id: id })
+  const pending = await db.collection("projectSubmissions").findOne({ _id: id })
   assert.equal(pending.status, "pending")
   const decidedAt = new Date("2026-11-21T01:00:00.000Z")
   const result = await decideSubmission(db, {
@@ -83,14 +72,14 @@ test("a revision stores the explanation and a blank reason does not decide it", 
     action: "request_revision",
     reason: "  Add the method, and explain why the sample is too small.  ",
     decidedAt,
-  })
+  }, client)
   assert.deepEqual(result, { ok: true, status: "changes_requested" })
-  const stored = await db.collection().findOne({ _id: id })
+  const stored = await db.collection("projectSubmissions").findOne({ _id: id })
   assert.equal(stored.status, "changes_requested")
   assert.equal(stored.revisionReason, "Add the method, and explain why the sample is too small.")
   assert.equal(stored.decidedBy, "mod-1")
   assert.equal(stored.decidedAt, decidedAt)
-  assert.deepEqual(await decideSubmission(db, { id: id.toString(), moderatorId: "mod-2", action: "approve" }), { ok: false, error: "conflict" })
+  assert.deepEqual(await decideSubmission(db, { id: id.toString(), moderatorId: "mod-2", action: "approve" }, client), { ok: false, error: "conflict" })
   assert.equal(stored.status, "changes_requested")
   assert.equal(stored.revisionReason, "Add the method, and explain why the sample is too small.")
 })
@@ -137,7 +126,7 @@ function memoryDatabase() {
       if (!ids.some((id) => item._id?.equals?.(id))) return false
     }
     if (filter.status && item.status !== filter.status) return false
-    if (filter.projectId && !item.projectId?.equals?.(filter.projectId)) return false
+    if (filter.projectId && !(filter.projectId.$in ?? [filter.projectId]).some((id) => item.projectId?.equals?.(id))) return false
     if (filter.version !== undefined && item.version !== filter.version) return false
     if (filter.decidedBy && item.decidedBy !== filter.decidedBy) return false
     return true
@@ -146,6 +135,7 @@ function memoryDatabase() {
     collection(name) {
       const docs = documents(name)
       return {
+        async createIndex() {},
         async updateOne(filter, update) {
           const doc = docs.find((item) => matches(item, filter))
           if (!doc) return { matchedCount: 0 }
@@ -164,6 +154,7 @@ function memoryDatabase() {
           if (duplicate) { const error = new Error("duplicate"); error.code = 11000; throw error }
           docs.push(document)
         },
+        async insertMany(items) { for (const item of items) docs.push(item) },
         async deleteOne(filter) {
           const index = docs.findIndex((item) => matches(item, filter))
           if (index >= 0) docs.splice(index, 1)
@@ -193,7 +184,7 @@ test("approval publishes the snapshot into the public project list", async () =>
       consents: { permission: true },
     },
   })
-  const result = await decideSubmission(db, { id: id.toString(), moderatorId: "mod-1", action: "approve", decidedAt })
+  const result = await decideSubmission(db, { id: id.toString(), moderatorId: "mod-1", action: "approve", decidedAt }, client)
   assert.deepEqual(result, { ok: true, status: "approved" })
   const project = await db.collection("projects").findOne({ _id: id })
   assert.equal(project.title, "Barangay clinic scheduling study")
@@ -206,7 +197,7 @@ test("approval publishes the snapshot into the public project list", async () =>
   assert.equal(version.kind, "published")
   assert.equal(version.snapshot.title, "Barangay clinic scheduling study")
   assert.equal(version.snapshot.createdAt, decidedAt)
-  assert.equal(await promoteApprovedSubmissions(db), 0)
+  assert.equal(await promoteApprovedSubmissions(db, client), 0)
   assert.equal((await db.collection("projectVersions").find({ projectId: id }).toArray()).length, 1)
 })
 
@@ -220,13 +211,13 @@ test("an already approved submission is published once", async () => {
     decidedAt: new Date("2026-11-21T03:00:00.000Z"),
     snapshot: { title: "Shared Water Sensors for Informal Settlements", description: "Sensors", demos: [] },
   })
-  assert.equal(await promoteApprovedSubmissions(db), 1)
+  assert.equal(await promoteApprovedSubmissions(db, client), 1)
   assert.equal((await db.collection("projects").findOne({ _id: id })).title, "Shared Water Sensors for Informal Settlements")
-  assert.equal(await promoteApprovedSubmissions(db), 0)
+  assert.equal(await promoteApprovedSubmissions(db, client), 0)
 })
 
 test("a missing submission cannot be decided", async () => {
   const db = memorySubmissions([])
   assert.deepEqual(await decideSubmission(db, { id: "not-an-id", moderatorId: "mod-1", action: "approve" }), { ok: false, error: "not_found" })
-  assert.deepEqual(await decideSubmission(db, { id: new ObjectId().toString(), moderatorId: "mod-1", action: "approve" }), { ok: false, error: "not_found" })
+  assert.deepEqual(await decideSubmission(db, { id: new ObjectId().toString(), moderatorId: "mod-1", action: "approve" }, client), { ok: false, error: "not_found" })
 })
