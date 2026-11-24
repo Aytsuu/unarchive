@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +13,11 @@ import { RepeatableFields, type RepeatableField } from "@/components/publish/rep
 import { DemoUploader } from "@/components/publish/demo-uploader"
 import { TopicsSelect } from "@/components/publish/topics-select"
 import type { ReferenceProject } from "@/components/publish/reference-projects"
+import { useInstitutions } from "@/components/institutions/institution-catalog"
+import { matchInstitutionName } from "@/lib/institutions/match"
+
+const ManuscriptReview = dynamic(() => import("@/components/publish/manuscript-review").then((module) => module.ManuscriptReview), { ssr: false })
+type ManuscriptField = "title" | "description" | "abstract" | "institution" | "authors" | "year"
 
 export function PublishForm() {
   const [step, setStep] = useState(1)
@@ -23,7 +29,8 @@ export function PublishForm() {
   const [links, setLinks] = useState<RepeatableField[]>([])
   const [photos, setPhotos] = useState<File[]>([])
   const [institution, setInstitution] = useState("")
-  const [dateStarted, setDateStarted] = useState("")
+  const [institutionMatchStatus, setInstitutionMatchStatus] = useState("")
+  const { data: institutions, isError: institutionDirectoryError, refetch: retryInstitutions } = useInstitutions()
   const [dateEnded, setDateEnded] = useState("")
   const [contributors, setContributors] = useState<RepeatableField[]>([])
   const [referenceProjects, setReferenceProjects] = useState<ReferenceProject[]>([])
@@ -31,6 +38,9 @@ export function PublishForm() {
   const [contributorAccuracy, setContributorAccuracy] = useState(false)
   const [status, setStatus] = useState("")
   const [notice, setNotice] = useState("")
+  const [manuscriptSession, setManuscriptSession] = useState(0)
+  const [manuscriptSources, setManuscriptSources] = useState<ManuscriptField[]>([])
+  const [sourceRequest, setSourceRequest] = useState<{ field: ManuscriptField; sequence: number }>()
   const [pending, setPending] = useState(false)
   const pendingRef = useRef(false)
   const submissionId = useRef<string | null>(null)
@@ -50,13 +60,15 @@ export function PublishForm() {
     setLinks([])
     setPhotos([])
     setInstitution("")
-    setDateStarted("")
+    setInstitutionMatchStatus("")
     setDateEnded("")
     setContributors([])
     setReferenceProjects([])
     setPublishRights(false)
     setContributorAccuracy(false)
     setStatus("")
+    setManuscriptSession((current) => current + 1)
+    setManuscriptSources([])
     submissionId.current = null
     setNotice("Submitted for moderation. It stays off the public site until a moderator approves it.")
   }
@@ -64,6 +76,45 @@ export function PublishForm() {
   function addContributor() {
     const id = nextFieldId.current++
     setContributors((current) => [...current, { id, value: "" }])
+  }
+
+  function applyManuscriptField(field: ManuscriptField, value: string) {
+    if (field === "title") setTitle(value)
+    if (field === "description") setDescription(value)
+    if (field === "abstract") setAbstract(value)
+    if (field === "institution") {
+      if (!institutions) {
+        if (institutionDirectoryError) {
+          setInstitutionMatchStatus("The institution directory is unavailable. Retrying; please try applying the institution again.")
+          void retryInstitutions()
+        } else setInstitutionMatchStatus("The institution directory is loading. Please try applying the institution again in a moment.")
+        return false
+      }
+      const matched = matchInstitutionName(value, institutions.map((item) => item.name))
+      setInstitution(matched ?? value)
+      setInstitutionMatchStatus(matched ? `Matched to ${matched}.` : "No unique directory match found. The extracted name was kept; please verify it in project credits.")
+    }
+    if (field === "year") {
+      if (!/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(value)) return false
+      setDateEnded(value)
+    }
+    if (field === "authors") {
+      const names = value.split(/\n/).map((name) => name.trim()).filter(Boolean)
+      if (contributors.some(({ value: current }) => current.trim()) && !window.confirm("Replace the authors and contributors already entered with these names?")) return false
+      setContributors(names.map((name) => ({ id: nextFieldId.current++, value: name })))
+    }
+    setManuscriptSources((current) => current.includes(field) ? current : [...current, field])
+    return true
+  }
+
+  function forgetManuscriptSource(field: ManuscriptField) {
+    setManuscriptSources((current) => current.filter((item) => item !== field))
+  }
+
+  function showManuscriptSource(field: ManuscriptField) {
+    setStep(1)
+    setSourceRequest((current) => ({ field, sequence: (current?.sequence ?? 0) + 1 }))
+    requestAnimationFrame(() => document.getElementById("manuscript-review")?.scrollIntoView({ behavior: "smooth", block: "start" }))
   }
 
   function validateDetails() {
@@ -85,8 +136,7 @@ export function PublishForm() {
 
   function validateCredits() {
     if (institution.trim().length > 200) return "The institution must be at most 200 characters."
-    if ([dateStarted, dateEnded].some((value) => value && !/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(value))) return "Enter a valid month and year."
-    if (dateStarted && dateEnded && dateEnded < dateStarted) return "Date ended must be the same as or later than date started."
+    if (dateEnded && !/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(dateEnded)) return "Enter a valid completion month and year."
     const names = contributors.map(({ value }) => value.trim()).filter(Boolean)
     if (names.length > 50) return "Add no more than 50 contributors."
     if (names.some((name) => name.length > 200)) return "Each contributor's name must be at most 200 characters."
@@ -121,7 +171,6 @@ export function PublishForm() {
       topics,
       links: links.map(({ value }) => value.trim()).filter(Boolean),
       institution: institution.trim(),
-      dateStarted,
       dateEnded,
       contributors: contributors.map(({ value }) => value.trim()).filter(Boolean),
       referenceProjectIds: referenceProjects.map((project) => project.id),
@@ -201,6 +250,11 @@ export function PublishForm() {
         </div>
       </header>
 
+      <div hidden={step !== 1} className="mx-auto mt-8 max-w-7xl">
+        <ManuscriptReview key={manuscriptSession} onApply={applyManuscriptField} sourceRequest={sourceRequest} onSourcesReset={() => { setManuscriptSources([]); setInstitutionMatchStatus("") }} />
+        {institutionMatchStatus && <p role="status" className="mt-2 text-sm text-muted-foreground">{institutionMatchStatus}</p>}
+      </div>
+
       <section className="mx-auto mt-12.75 flex w-full max-w-89.25 flex-col items-center" aria-busy={pending}>
         <Progress value={step * 100 / 3} aria-label="Publish progress" aria-valuetext={`Step ${step} of 3`} className="mx-auto w-55 max-w-full **:data-[slot=progress-track]:h-2" />
         <p className="sr-only" aria-live="polite">Step {step} of 3</p>
@@ -212,9 +266,12 @@ export function PublishForm() {
 
         {step === 1 ? (
           <div className="mt-12.5 w-full">
-            <Input aria-label="Project title" placeholder="Add title" required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)}/>
-            <Textarea aria-label="Short description" placeholder="Add short description" maxLength={5000} value={description} onChange={(event) => setDescription(event.target.value)} className="mt-6.5 h-20" />
-            <Textarea aria-label="Abstract" placeholder="Add abstract" maxLength={10000} value={abstract} onChange={(event) => setAbstract(event.target.value)} className="mt-6.5 h-29" />
+            <Input aria-label="Project title" placeholder="Add title" required maxLength={200} value={title} onChange={(event) => { setTitle(event.target.value); forgetManuscriptSource("title") }}/>
+            {manuscriptSources.includes("title") && <button type="button" className="mt-1 text-sm underline" onClick={() => showManuscriptSource("title")}>View title source</button>}
+            <Textarea aria-label="Short description" placeholder="Add short description" maxLength={5000} value={description} onChange={(event) => { setDescription(event.target.value); forgetManuscriptSource("description") }} className="mt-6.5 h-20" />
+            {manuscriptSources.includes("description") && <button type="button" className="mt-1 text-sm underline" onClick={() => showManuscriptSource("description")}>View description source</button>}
+            <Textarea aria-label="Abstract" placeholder="Add abstract" maxLength={10000} value={abstract} onChange={(event) => { setAbstract(event.target.value); forgetManuscriptSource("abstract") }} className="mt-6.5 h-29" />
+            {manuscriptSources.includes("abstract") && <button type="button" className="mt-1 text-sm underline" onClick={() => showManuscriptSource("abstract")}>View abstract source</button>}
             <div className="mt-8.5 px-1.25">
               <h2 className="text-lg font-medium">Topics</h2>
               <div className="mt-3.5"><TopicsSelect value={topics} onChange={setTopics} /></div>
@@ -231,7 +288,10 @@ export function PublishForm() {
             </div>
           </div>
         ) : step === 2 ? (
-          <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateStarted={dateStarted} dateEnded={dateEnded} onDateStartedChange={setDateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={addContributor} onContributorsChange={setContributors} referenceProjects={referenceProjects} onReferenceProjectsChange={setReferenceProjects} />
+          <><ProjectCredits institution={institution} onInstitutionChange={(value) => { setInstitution(value); setInstitutionMatchStatus(""); forgetManuscriptSource("institution") }} dateEnded={dateEnded} onDateEndedChange={(value) => { setDateEnded(value); forgetManuscriptSource("year") }} contributors={contributors} onAddContributor={() => { addContributor(); forgetManuscriptSource("authors") }} onContributorsChange={(value) => { setContributors(value); forgetManuscriptSource("authors") }} referenceProjects={referenceProjects} onReferenceProjectsChange={setReferenceProjects} />
+          {manuscriptSources.includes("year") && <button type="button" className="mt-4 self-start text-sm underline" onClick={() => showManuscriptSource("year")}>View completion year source</button>}
+          {manuscriptSources.includes("institution") && <button type="button" className="mt-4 self-start text-sm underline" onClick={() => showManuscriptSource("institution")}>View institution source</button>}
+          {manuscriptSources.includes("authors") && <button type="button" className="mt-2 self-start text-sm underline" onClick={() => showManuscriptSource("authors")}>View authors source</button>}</>
         ) : (
           <PublishConsents publishRights={publishRights} contributorAccuracy={contributorAccuracy} onPublishRightsChange={setPublishRights} onContributorAccuracyChange={setContributorAccuracy} disabled={pending} />
         )}

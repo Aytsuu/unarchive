@@ -65,7 +65,7 @@ const manuscriptRules = {
 }
 ```
 
-Propose title, abstract, institution, ordered authors, and completion year. Mark weak or ambiguous matches **Needs review** and retain alternatives. Map confirmed authors to existing contributor fields and ask the publisher to verify roles. A year is only a suggestion: the existing end date requires a month and year, so never invent a month. Recognize an explicitly labeled short description when available, but do not generate one. Academic program, keywords, and technology stack have no matching saved project fields in this release.
+Propose title, abstract, institution, ordered authors, and completion year. Mark weak or ambiguous matches **Needs review** and retain alternatives. Map confirmed authors to existing contributor fields and ask the publisher to verify roles. Rank cover dates as completion candidates, recognize full and abbreviated month names, and let the publisher apply a detected month and year to the completion field. A year without a month remains a suggestion; never invent a month. Recognize an explicitly labeled short description when available, but do not generate one. Academic program, keywords, and technology stack have no matching saved project fields in this release.
 
 The responsive review interface pairs the PDF with editable suggestions. Clicking a field or candidate navigates to and highlights its source; selecting document text allows assignment to a supported field. Preserve user edits while parsing continues. Provide keyboard-operable controls, accessible labels and status messages, and a stacked layout on smaller screens. Confirmed and manually entered values continue through existing validation and consent steps. No API or database schema change is needed.
 
