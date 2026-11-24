@@ -30,7 +30,7 @@ export function ProjectEditForm({ initial }: { initial: ProjectEditInitial }) {
   const [description, setDescription] = useState(initial.description)
   const [abstract, setAbstract] = useState(initial.abstract)
   const [institution, setInstitution] = useState(initial.institution)
-  const [dateStarted, setDateStarted] = useState(initial.dateStarted)
+  const dateStarted = initial.dateStarted
   const [dateEnded, setDateEnded] = useState(initial.dateEnded)
   const [topics, setTopics] = useState(initial.topics)
   const [links, setLinks] = useState<RepeatableField[]>(initial.links.map((value, id) => ({ id, value })))
@@ -93,7 +93,7 @@ export function ProjectEditForm({ initial }: { initial: ProjectEditInitial }) {
         <div className="space-y-2"><Label htmlFor="edit-abstract">Abstract</Label><Textarea id="edit-abstract" maxLength={10000} value={abstract} onChange={(event) => setAbstract(event.target.value)} /></div>
         <div className="space-y-2"><h2 className="text-sm font-medium">Topics</h2><TopicsSelect value={topics} onChange={setTopics} /></div>
         <div className="space-y-2"><h2 className="text-sm font-medium">Links</h2><RepeatableFields kind="link" fields={links} onChange={setLinks} onAdd={() => setLinks((current) => [...current, { id: nextId.current++, value: "" }])} /></div>
-        <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateStarted={dateStarted} dateEnded={dateEnded} onDateStartedChange={setDateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={() => setContributors((current) => [...current, { id: nextId.current++, value: "" }])} onContributorsChange={setContributors} referenceProjects={references} onReferenceProjectsChange={setReferences} />
+        <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateEnded={dateEnded} minDateEnded={dateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={() => setContributors((current) => [...current, { id: nextId.current++, value: "" }])} onContributorsChange={setContributors} referenceProjects={references} onReferenceProjectsChange={setReferences} />
         {unavailable.length > 0 && <p role="alert" className="text-sm text-destructive">Some referenced projects are unavailable. Remove the unavailable references before saving.</p>}
         <div className="flex flex-wrap items-center gap-3"><Button type="submit" disabled={!title.trim() || !typeConfirmed || unavailable.length > 0}>{pending ? "Saving..." : "Save new version"}</Button><Link href={`/projects/${initial.id}`} className={buttonVariants({ variant: "secondary" })}>Cancel</Link></div>
       </fieldset>

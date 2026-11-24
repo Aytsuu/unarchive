@@ -22,7 +22,7 @@ export function RevisionForm({ initial }: { initial: RevisionInitial }) {
   const [description, setDescription] = useState(initial.description)
   const [abstract, setAbstract] = useState(initial.abstract)
   const [institution, setInstitution] = useState(initial.institution)
-  const [dateStarted, setDateStarted] = useState(initial.dateStarted)
+  const dateStarted = initial.dateStarted
   const [dateEnded, setDateEnded] = useState(initial.dateEnded)
   const [topics, setTopics] = useState(initial.topics)
   const [links, setLinks] = useState<RepeatableField[]>(initial.links.map((value, id) => ({ id, value })))
@@ -84,7 +84,7 @@ export function RevisionForm({ initial }: { initial: RevisionInitial }) {
         <div className="space-y-2"><Label htmlFor="revision-abstract">Abstract</Label><Textarea id="revision-abstract" maxLength={10000} value={abstract} onChange={(e) => setAbstract(e.target.value)} /></div>
         <div className="space-y-2"><h2 className="font-medium">Topics</h2><TopicsSelect value={topics} onChange={setTopics} /></div>
         <div className="space-y-2"><h2 className="font-medium">Links</h2><RepeatableFields kind="link" fields={links} onChange={setLinks} onAdd={() => setLinks((current) => [...current, { id: nextId.current++, value: "" }])} /></div>
-        <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateStarted={dateStarted} dateEnded={dateEnded} onDateStartedChange={setDateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={() => setContributors((current) => [...current, { id: nextId.current++, value: "" }])} onContributorsChange={setContributors} referenceProjects={references} onReferenceProjectsChange={setReferences} />
+        <ProjectCredits institution={institution} onInstitutionChange={setInstitution} dateEnded={dateEnded} minDateEnded={dateStarted} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={() => setContributors((current) => [...current, { id: nextId.current++, value: "" }])} onContributorsChange={setContributors} referenceProjects={references} onReferenceProjectsChange={setReferences} />
         {unavailable && <p role="alert" className="text-sm text-destructive">Remove unavailable reference projects before resubmitting.</p>}
         <section className="space-y-3"><h2 className="font-medium">Demo images</h2>
           {retained.map((index) => <div key={index} className="flex items-center gap-3"><img src={`/api/submissions/${initial.id}/demos/${index}`} alt={`Submitted demo ${index + 1}`} className="size-20 rounded object-cover" /><Button type="button" variant="outline" onClick={() => setRetained((current) => current.filter((value) => value !== index))}>Remove image {index + 1}</Button></div>)}

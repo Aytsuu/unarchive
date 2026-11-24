@@ -26,6 +26,6 @@ test("star event ids stay stable for one committed star and group apart from ref
   assert.notEqual(starGroupKey("owner", "65c00000000000000000000a"), referenceGroupKey("owner", "65c00000000000000000000a"))
 })
 
-test("optional notification email stays off until the user enables it", () => {
-  assert.deepEqual(defaultEmailPreferences, { projectReferences: false, projectStars: false, productAnnouncements: false, whatsNew: false })
+test("activity and marketing emails are opt-in while moderation emails default to on", () => {
+  assert.deepEqual(defaultEmailPreferences, { projectReferences: false, projectStars: false, productAnnouncements: false, whatsNew: false, publishApproved: true, revisionRequested: true })
 })
