@@ -12,9 +12,10 @@ function Get-ProcessListenPort {
     return $null
 }
 
-function Get-ProjectDevServer {
+function Get-ProjectDevServers {
     param([string]$ProjectRoot)
 
+    $servers = @()
     $processes = @(Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue)
     foreach ($current in $processes) {
         $commandLine = [string]$current.CommandLine
@@ -31,7 +32,16 @@ function Get-ProjectDevServer {
             }
         }
         if (-not $port) { $port = $(if ($preferred -gt 0) { $preferred } else { 3000 }) }
-        return [pscustomobject]@{ ProcessId = $current.ProcessId; Port = [int]$port }
+        $name = if ($port -ge 3100 -and $port -le 3199) { 'moderator' } else { 'web' }
+        $servers += [pscustomobject]@{ Name = $name; ProcessId = $current.ProcessId; Port = [int]$port }
     }
-    return $null
+    return $servers
+}
+
+function Get-ProjectDevServer {
+    param([string]$ProjectRoot)
+
+    $servers = @(Get-ProjectDevServers -ProjectRoot $ProjectRoot)
+    if ($servers.Count -eq 0) { return $null }
+    return $servers[0]
 }

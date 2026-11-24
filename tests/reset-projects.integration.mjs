@@ -30,6 +30,7 @@ test("project reset removes related records, preserves other data and can be rep
     await db.collection("projectViews").insertMany([{ projectId: firstId }, { projectId: secondId }])
     await db.collection("projectStars").insertMany([{ projectId: firstId }, { projectId: secondId }])
     await db.collection("projectSaves").insertMany([{ projectId: firstId, userId: "user-1" }, { projectId: secondId, userId: "user-1" }])
+    await db.collection("projectSubmissions").insertOne({ ownerId: "user-1", status: "pending", snapshot: { title: "Pending study", demos: ["projects/44444444-4444-4444-8444-444444444444.png"] } })
     for (const collectionName of ["user", "session", "account", "verification", "projectPublishRateLimit", "projectMetricsRateLimit", "projectReferenceSearchRateLimit", "unrelated"]) {
       await db.collection(collectionName).insertOne({ marker: collectionName })
     }
@@ -38,8 +39,8 @@ test("project reset removes related records, preserves other data and can be rep
     const originalOptions = (await db.listCollections({ name: "projects" }).next()).options
     const deletedKeys = []
     await resetProjectData(db, undefined, async (keys) => { deletedKeys.push(...keys) })
-    assert.deepEqual(deletedKeys, ["projects/11111111-1111-4111-8111-111111111111.png"])
-    for (const collectionName of ["projects", "projectVersions", "projectViews", "projectStars", "projectSaves"]) {
+    assert.deepEqual([...deletedKeys].sort(), ["projects/11111111-1111-4111-8111-111111111111.png", "projects/44444444-4444-4444-8444-444444444444.png"].sort())
+    for (const collectionName of ["projects", "projectVersions", "projectViews", "projectStars", "projectSaves", "projectSubmissions"]) {
       assert.equal(await db.collection(collectionName).countDocuments(), 0, `${collectionName} is empty`)
     }
     for (const collectionName of ["user", "session", "account", "verification", "projectPublishRateLimit", "projectMetricsRateLimit", "projectReferenceSearchRateLimit", "unrelated"]) {

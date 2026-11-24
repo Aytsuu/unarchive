@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert"
 import { test } from "node:test"
-import { pageSizeForWidth, listingQueryForViewport } from "../lib/projects/listing-viewport.mjs"
+import { pageSizeForWidth, listingQueryForViewport } from "../apps/web/lib/projects/listing-viewport.mjs"
 
 test("viewport matches the grid breakpoints", () => {
   for (const [width, expected] of [[320, 3], [639, 3], [640, 6], [1023, 6], [1024, 9], [1279, 9], [1280, 12]]) assert.equal(pageSizeForWidth(width), expected)

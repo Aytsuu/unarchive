@@ -2,7 +2,7 @@
 
 ## Capability and scope
 
-Signed-in users can see relevant activity in an in-app notification inbox, manage optional notification email in settings, and eventually opt in to browser push. The initial activity types are references to and stars received on a user's project, selected account security events, optional product announcements, and justified essential service notices. A dedicated `/whats-new` page references `CHANGELOG.md` and indicates when eligible new content has been published since the user last viewed it. All notifications pertaining to saved projects are excluded.
+Signed-in users can see relevant activity in an in-app notification inbox, manage optional notification email in settings, and eventually opt in to browser push. The initial activity types are publication approvals and revision requests, references to and stars received on a user's project, selected account security events, optional product announcements, and justified essential service notices. A dedicated `/whats-new` page references `CHANGELOG.md` and indicates when eligible new content has been published since the user last viewed it. All notifications pertaining to saved projects are excluded.
 
 The existing bell in `components/home/notifications-popover.tsx` is a static placeholder. `app/settings/page.tsx` is the settings entry point. The app uses MongoDB, Better Auth, and Resend; it does not currently have a notification worker. Existing verification emails are part of authentication and remain separate from notification preferences.
 
@@ -11,16 +11,19 @@ The existing bell in `components/home/notifications-popover.tsx` is a static pla
 | Topic | Initial behavior |
 | --- | --- |
 | In-app | Enabled for supported activity; show All and Unread, unread count, mark read, and mark all read. |
-| Email | Reference and project-star emails are off by default, as are optional discovery, engagement, and What's New/release emails. Essential account-security notices cannot be disabled. Justified essential service notices may bypass product-marketing preferences. Decide explicitly whether each future important project category defaults on; do not invent another category to fill that policy. |
+| Email | Publication approval and revision-request emails default on and can be controlled separately. Reference and project-star emails are off by default, as are optional discovery, engagement, and What's New/release emails. Essential account-security notices cannot be disabled. Justified essential service notices may bypass product-marketing preferences. Decide explicitly whether each future important project category defaults on. |
 | Push | Later phase. Off by default; request browser permission only after an explicit Enable action in settings. Permission and subscriptions are browser/device-specific. |
 | References | Notify the referenced project's owner when a different user's published project newly references it. The product can observe in-product references, not external citations or copied citation text. |
 | Project stars | Notify a project's owner in-app when another user stars the project. Do not notify on self-stars, repeated requests that leave the star unchanged, or star removals. Treat email as optional engagement and default it off. |
+| Moderation | Notify the submitter when publication is approved and the project is published, or when revisions are requested. Approval links to the published project; a revision request links to an owner-only view of the reason and resubmission form. |
 | Security | Successful password changes and completed password resets create in-app notifications and essential email. Email changes notify the old and new addresses as appropriate; account suspensions or security restrictions generate email when appropriate. New-device/unusual-sign-in alerts are deferred; failed sign-ins remain security logs only. |
 | What's New | Curated entries appear at `/whats-new` and reference `CHANGELOG.md`. A new indicator requires publication after account creation and the user's last acknowledged view. Routine releases do not automatically become notifications; optional product announcement notifications link to `/whats-new`. |
 | Essential service notices | Security, privacy, or significant service changes may justify an in-app notice and email regardless of product-marketing preferences; use a distinct, controlled classification. |
-| Action Required | Keep the existing tab visible and selectable with its empty state. No notification types are linked to it until an actionable type and its lifecycle are defined. |
+| Action Required | Show unresolved revision requests, including read ones, until successful resubmission; approval notices are informational. Reading or marking all read does not resolve an action. |
 
 In-app history expires after 90 days, whether read or unread; explain this in the UI. Routine email digests are weekly and opt-in. Retain successful delivery metadata for 90 days and failed or dead-letter metadata for 180 days, subject to privacy and operational requirements. Retain outbox records only as long as needed for operations and audit, and never delete unprocessed or retryable work. Remove address snapshots as soon as they are no longer needed for delivery and investigation.
+
+Moderation decisions and their event records must commit atomically with publication where applicable. Revision resubmission creates a new pending snapshot and resolves the prior action only on success; ownership checks protect the reason and media. Action notifications expire after 90 days, while submission status remains available to the owner. Do not backfill notifications for historical decisions.
 
 ## Architecture and contracts
 
@@ -55,7 +58,7 @@ This is a proposed **client-facing** shape, not the outbox or delivery-job schem
 ```ts
 type NotificationDto = {
   id: string
-  type: "project.referenced" | "project.starred" | "account.security_alert" | "product.announcement" | "service.essential_notice"
+  type: "project.referenced" | "project.starred" | "project.publish_approved" | "project.revision_requested" | "account.security_alert" | "product.announcement" | "service.essential_notice"
   createdAt: string
   updatedAt: string
   readAt: string | null
@@ -63,7 +66,7 @@ type NotificationDto = {
   title: string
   body: string
   // A typed internal target, never an arbitrary URL. Null when unavailable.
-  target: { type: "project"; id: string } | { type: "account_security" } | { type: "whats_new" } | null
+  target: { type: "project"; id: string } | { type: "submission"; id: string } | { type: "account_security" } | { type: "whats_new" } | null
   // Null for ungrouped events. Counts reflect distinct events, not retries.
   group: { count: number; firstOccurredAt: string; lastOccurredAt: string } | null
 }
@@ -96,7 +99,7 @@ For example, a project reference returned by the list endpoint could be:
 ## Delivery phases
 
 1. **Resolve policy and infrastructure.** Complete the implementation prerequisites below, including security event capture, worker deployment, MongoDB transaction support, sender configuration, and monitoring. Document event schemas and acceptance criteria. Review `lib/legal/policy.ts` for new processing and communication purposes.
-2. **Foundation and in-app activity.** Add indexes, event/outbox writes, worker and idempotent fan-out, notification storage, access checks, and list/read APIs. Wire the bell's All and Unread views, badge, loading/error/empty states, pagination, and read controls. Refresh on focus and use a modest polling interval while the app is active; avoid polling hidden tabs. Keep Action Required visible and selectable with no notification types assigned. Add preferences storage and settings before email delivery.
+2. **Foundation and in-app activity.** Add indexes, event/outbox writes, worker and idempotent fan-out, notification storage, access checks, and list/read APIs. Wire the bell's All, Unread, and Action Required views, badge, loading/error/empty states, pagination, and read controls. Refresh on focus and use a modest polling interval while the app is active; avoid polling hidden tabs. Add preferences storage and settings before email delivery.
 3. **What's New.** Add `/whats-new`, its `CHANGELOG.md` reference and explicit publication workflow, last-viewed state, new-content indicator, optional personal announcements, and publication/withdrawal access controls.
 4. **Email.** Add category controls, templates, weekly opt-in digest scheduling, durable delivery and retry monitoring. Roll out to a small cohort after validating configuration, preferences, security exceptions, and recovery.
 5. **Browser push later.** After the core is stable, implement service worker, per-device subscription lifecycle, server-side subscription validation, delivery/retry and expired-subscription cleanup. Ask permission only from a contextual Enable action; handle denied/unsupported states and disable/revoke controls. Select useful, time-sensitive types and privacy-safe payloads. No permission prompt at page load.
@@ -106,6 +109,7 @@ For example, a project reference returned by the list endpoint could be:
 - Follow test-first development. Unit tests cover category policy, reference diffs, grouping, watermark and preference decisions. Integration tests with a transaction-capable MongoDB cover atomic commit/rollback, replay, unique constraints, fan-out checkpoints, leases, retries, concurrent read state, and recipient isolation. E2E tests cover bell, settings, read actions, What's New, and opt-in push when implemented. Aim for the repository's 80% coverage requirement with meaningful coverage of new code.
 - Test withdrawn or inaccessible targets, self-events, star insert and outbox rollback, duplicate star requests, concurrent stars, unstar/re-star and grouping after read, stale preferences, old/new email destinations, completed versus requested resets, successful security operations despite delivery failure, worker crashes, provider timeouts, multi-device state, and announcements published before account creation or while the page is open.
 - Monitor oldest pending event, queue depth, lease expiry, retry/dead-letter counts, delivery failures and duplicate indicators. The named deployment operator or on-call maintainer receives repeated-failure alerts, investigates dead letters, and controls safe replay. Provide documented safe replay and retention cleanup procedures; do not log secrets or notification content unnecessarily. Production email is not ready until an owner is assigned.
+- The notification worker can run continuously with `node --experimental-strip-types scripts/process-notifications.mjs --watch` using deployment-injected `MONGODB_URI`, `MONGODB_DB_NAME`, `WEB_APP_URL` (or `BETTER_AUTH_URL`), `EMAIL_FROM`, and `RESEND_API_KEY`. The npm helper loads `.env.local` for local operation. Configure a supervised production process and external monitoring for dead jobs; logging alone is not an alerting system. Provider acceptance is not proof of delivery.
 - Roll out behind independently controllable in-app, email, and push flags. Verify the worker and production database first, observe a limited cohort, then expand. Disable delivery independently while preserving durable events for safe recovery.
 
 ## Implementation prerequisites

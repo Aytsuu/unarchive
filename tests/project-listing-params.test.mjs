@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert"
 import { test } from "node:test"
-import { LISTING_SORT_OPTIONS, LISTING_SORTS, listingMatch, listingSortNeedsMetrics, listingSortSpec, parseListingParams } from "../lib/projects/listing-params.mjs"
+import { LISTING_SORT_OPTIONS, LISTING_SORTS, listingMatch, listingSortNeedsMetrics, listingSortSpec, parseListingParams } from "../apps/web/lib/projects/listing-params.mjs"
 
 test("guest browsing accepts pagination and supported page sizes", () => {
   assert.deepEqual(parseListingParams(new URLSearchParams("q=%20Example%20&page=4&size=12")), {

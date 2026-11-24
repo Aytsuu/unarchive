@@ -7,27 +7,50 @@ $stateFile = Join-Path $root '.stack\dev-process.json'
 $quitDocker = ($RemainingArguments -contains '--docker-quit') -or ($env:npm_config_docker_quit -eq 'true')
 Set-Location $root
 
+function Get-RunningStackServers {
+    if (Get-Command Get-ProjectDevServers -ErrorAction SilentlyContinue) {
+        return @(Get-ProjectDevServers -ProjectRoot $root)
+    }
+    $projectServer = Get-ProjectDevServer -ProjectRoot $root
+    if ($null -eq $projectServer) { return @() }
+    return @($projectServer)
+}
+
 try {
-    $stoppedServer = $false
+    $killed = @{}
+    function Stop-DevPid {
+        param([int]$ProcessId, [string]$Label)
+        if ($killed.ContainsKey("$ProcessId")) { return }
+        $alive = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+        if ($null -eq $alive) { return }
+        Write-Host "Stopping the $Label dev server..."
+        & taskkill.exe /PID $ProcessId /T /F | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Failed to stop the $Label dev server." }
+        $killed["$ProcessId"] = $true
+    }
+
     if (Test-Path -LiteralPath $stateFile) {
         $state = Get-Content -Raw -LiteralPath $stateFile | ConvertFrom-Json
-        $process = Get-Process -Id $state.pid -ErrorAction SilentlyContinue
-        if ($null -ne $process -and $process.StartTime.ToUniversalTime().Ticks -eq [long]$state.startTicks) {
-            Write-Host 'Stopping this project dev server...'
-            & taskkill.exe /PID $process.Id /T /F | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw 'Failed to stop the dev server process tree.' }
-            $stoppedServer = $true
-        } else { Write-Host 'This project dev server is not running.' }
+        $recorded = @()
+        if ($state.servers) { $recorded = @($state.servers) }
+        elseif ($state.pid) { $recorded = @([pscustomobject]@{ name = 'web'; pid = $state.pid; startTicks = $state.startTicks }) }
+        foreach ($server in $recorded) {
+            $alive = Get-Process -Id $server.pid -ErrorAction SilentlyContinue
+            if ($null -ne $alive -and $alive.StartTime.ToUniversalTime().Ticks -eq [long]$server.startTicks) {
+                $label = if ($server.name) { [string]$server.name } else { 'web' }
+                Stop-DevPid -ProcessId ([int]$server.pid) -Label $label
+            }
+        }
         Remove-Item -LiteralPath $stateFile -Force
     }
-    if (-not $stoppedServer) {
-        $projectServer = Get-ProjectDevServer -ProjectRoot $root
-        if ($null -ne $projectServer) {
-            Write-Host 'Stopping this project dev server...'
-            & taskkill.exe /PID $projectServer.ProcessId /T /F | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw 'Failed to stop the dev server process tree.' }
-        } else { Write-Host 'This project dev server is not running.' }
+
+    foreach ($server in @(Get-RunningStackServers)) {
+        $label = if ($server.Name) { [string]$server.Name } else { 'web' }
+        Stop-DevPid -ProcessId ([int]$server.ProcessId) -Label $label
     }
+    if ($killed.Count -eq 0) { Write-Host 'The web and moderator dev servers are not running.' }
+    $portsFile = Join-Path $root '.stack\ports.json'
+    if (Test-Path -LiteralPath $portsFile) { Remove-Item -LiteralPath $portsFile -Force }
 
     & cmd.exe /c 'docker info --format "{{.ServerVersion}}" 2>nul' | Out-Null
     if ($LASTEXITCODE -eq 0) {

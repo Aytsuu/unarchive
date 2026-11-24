@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { requestOrigin, sameOrigin } from "../lib/legal/origin.ts"
+import { requestOrigin, sameOrigin } from "../apps/web/lib/legal/origin.ts"
 
 const request = (origin: string) => new Request("http://localhost:3002/signup", { headers: { origin } })
 

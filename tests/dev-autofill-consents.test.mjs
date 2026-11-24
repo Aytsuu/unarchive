@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { autofillVisibleFields } from "../components/dev-tools/autofill.ts"
+import { autofillVisibleFields } from "../apps/web/components/dev-tools/autofill.ts"
 
 test("autofill checks the two publish consents by label and id", async () => {
   class Control extends EventTarget {

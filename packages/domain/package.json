@@ -1,0 +1,11 @@
+{
+  "name": "@unarchive/domain",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./access": "./access.mjs",
+    "./submissions": "./submissions.mjs",
+    "./return-url": "./return-url.mjs",
+    "./test-account": "./test-account.mjs"
+  }
+}

@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert"
 import { test } from "node:test"
-import { listingShowsInitialSkeleton, projectListingArgs, projectTopicsArgs } from "../lib/projects/home-query-args.mjs"
+import { listingShowsInitialSkeleton, projectListingArgs, projectTopicsArgs } from "../apps/web/lib/projects/home-query-args.mjs"
 
 const source = { search: "flood", page: 2, pageSize: 12, scope: "user-1" }
 

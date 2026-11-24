@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert"
 import { test } from "node:test"
-import { bubbleDiameter, institutionShare } from "../lib/projects/institution-bubbles.mjs"
+import { bubbleDiameter, institutionShare } from "../apps/web/lib/projects/institution-bubbles.mjs"
 
 test("bubble sizes grow with the number of projects and stay within bounds", () => {
   assert.equal(bubbleDiameter(1, 1), 104)

@@ -17,7 +17,7 @@ unarchive/
 
 Use npm workspaces and the existing lockfile initially. Each app has its own build, deployment, environment configuration, and domain. Share components and code where needed; keep moderator-only screens and privileged operations in the moderator app. Configure Next.js to transpile local workspace packages as needed.
 
-Both applications use the same MongoDB database and project records. The database holds the moderation queue, while shared server-side services enforce the same rules from both applications. A separate backend service or message broker is unnecessary for the initial workload.
+Both applications use the same MongoDB database and project records. The database holds the moderation queue, while shared server-side services enforce the same rules from both applications. A separate backend service or message broker is unnecessary for the initial workload. The moderator app opens directly to the moderation queue; it does not have a separate landing page or authentication UI.
 
 The current publishing flow creates a public project immediately, and edits update the public version immediately. Moderation requires separate submitted snapshots so a moderator approves exactly what the creator submitted while the last approved version remains public.
 
@@ -33,16 +33,18 @@ The current publishing flow creates a public project immediately, and edits upda
 
 ## Access and deployment
 
-- Reuse existing Better Auth user identities. Store moderator permissions server-side and check them on every privileged page, API, and media request; hiding the interface is not an authorization boundary.
+- Moderators are existing web users with an additional server-side moderator permission; ordinary web users do not receive this permission by default. Resolve the permission from the server when rendering the web header, and show a Moderation button only to users who currently have it. The button links directly to the moderator queue.
+- Reuse the existing Better Auth login and session across both applications. Configure cross-subdomain session cookies for the web and moderator hosts, with HTTPS, Secure and HttpOnly attributes, appropriate SameSite settings, explicit trusted origins, and CSRF protection for state-changing requests. Sharing a parent-domain cookie exposes it to sibling subdomains, so restrict control of those subdomains and account for that trust boundary in deployment. No separate moderator sign-in or account is created.
+- On every moderator page, API, and protected media request, validate the session and check the current moderator permission server-side. Do not rely on the header button, a client-side check, or a role cached in a session as the authorization boundary; revocation must take effect on subsequent requests. Redirect unauthenticated page requests to the existing web login, with a validated return destination; deny authenticated users without permission. APIs and media must deny unauthorized requests without returning protected content.
 - Provision the initial moderator's existing account through a controlled administrative bootstrap. Support granting and revoking roles for additional moderators later.
-- Use a separate host-scoped moderator session and sign-in on `moderator.unarchive.com` initially. This retains the same user identity without sharing session cookies across every subdomain. Configure explicit trusted origins and protect state-changing requests against CSRF.
-- Keep production secrets and deployment settings separate per app. Both deployments need appropriately scoped access to MongoDB and project storage. Configure DNS and HTTPS for each hostname when deploying.
+- Keep app-specific production secrets and deployment settings separate. Securely configure any shared Better Auth secret and session settings required to validate the existing session in both deployments. Both deployments need appropriately scoped access to MongoDB and project storage. Configure DNS and HTTPS for each hostname when deploying.
 - Keep the existing legal-report administration functional during the split. Moving that workflow into the moderator app can follow separately.
 
 ## Verification
 
 - Test submission, approval, requested changes, resubmission, and review of edits while the previous version remains public.
-- Verify unauthenticated users, ordinary users, and revoked moderators cannot access moderator operations or pending media.
+- Verify the header button appears for permitted moderators and is absent for guests, ordinary users, and revoked moderators. Confirm the button opens the queue without a second login or landing page.
+- Verify direct moderator URLs, APIs, and pending media reject unauthenticated users, ordinary users, and revoked moderators. Confirm an unauthenticated page visit uses the existing web login and returns only to a validated destination, and that a permitted moderator can access the queue and operations with the existing session.
 - Test simultaneous decisions, retries, stale submissions, failures during promotion, and public cache refresh after approval.
 - Verify existing published projects, versions, direct links, and media remain accessible after migration. Run both app builds and relevant unit, integration, and end-to-end tests.
 

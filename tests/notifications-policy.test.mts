@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { addedReferenceIds, belongsToReferenceGroup, defaultEmailPreferences, notificationExpiry, referenceEventId, referenceGroupKey, starEventId, starGroupKey } from "../lib/notifications/policy.ts"
+import { addedReferenceIds, belongsToReferenceGroup, defaultEmailPreferences, notificationExpiry, referenceEventId, referenceGroupKey, starEventId, starGroupKey } from "../apps/web/lib/notifications/policy.ts"
 
 test("reference diffs keep only newly added valid ids", () => {
   assert.deepEqual(addedReferenceIds(["65c000000000000000000001", "not-an-id"], ["65C000000000000000000001", "65c000000000000000000002"]), ["65c000000000000000000002"])

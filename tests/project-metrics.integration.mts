@@ -3,9 +3,9 @@ import { randomUUID } from "node:crypto"
 import { test } from "node:test"
 import { MongoClient, ObjectId } from "mongodb"
 
-const { getProjectMetrics, recordProjectView, setProjectStar } = await import(new URL("../lib/projects/metrics.ts", import.meta.url).href)
-const { claimMetricsAttempt } = await import(new URL("../lib/projects/metrics-rate-limit.ts", import.meta.url).href)
-const { normalizeViewIp, viewIpFromHeaders } = await import(new URL("../lib/projects/view-ip.ts", import.meta.url).href)
+const { getProjectMetrics, recordProjectView, setProjectStar } = await import(new URL("../apps/web/lib/projects/metrics.ts", import.meta.url).href)
+const { claimMetricsAttempt } = await import(new URL("../apps/web/lib/projects/metrics-rate-limit.ts", import.meta.url).href)
+const { normalizeViewIp, viewIpFromHeaders } = await import(new URL("../apps/web/lib/projects/view-ip.ts", import.meta.url).href)
 
 test("IP extraction requires a configured production proxy and normalizes addresses", () => {
   const headers = new Headers({ "x-forwarded-for": "192.0.2.1", "x-real-ip": "::ffff:192.0.2.1" })

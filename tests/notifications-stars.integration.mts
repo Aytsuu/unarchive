@@ -3,10 +3,10 @@ import { randomUUID } from "node:crypto"
 import { test } from "node:test"
 import { MongoClient, ObjectId } from "mongodb"
 
-const { setProjectStar } = await import(new URL("../lib/projects/metrics.ts", import.meta.url).href)
-const { processNotificationOutbox } = await import(new URL("../lib/notifications/outbox.ts", import.meta.url).href)
-const { listNotifications, markNotificationRead } = await import(new URL("../lib/notifications/inbox.ts", import.meta.url).href)
-const { starEventId } = await import(new URL("../lib/notifications/policy.ts", import.meta.url).href)
+const { setProjectStar } = await import(new URL("../apps/web/lib/projects/metrics.ts", import.meta.url).href)
+const { processNotificationOutbox } = await import(new URL("../apps/web/lib/notifications/outbox.ts", import.meta.url).href)
+const { listNotifications, markNotificationRead } = await import(new URL("../apps/web/lib/notifications/inbox.ts", import.meta.url).href)
+const { starEventId } = await import(new URL("../apps/web/lib/notifications/policy.ts", import.meta.url).href)
 
 test("a new star notifies the owner once per person, and repeats, removals, self-stars, and withdrawn projects do not", async () => {
   const client = new MongoClient(process.env.MONGODB_URI!, { directConnection: true, serverSelectionTimeoutMS: 5000 })
@@ -73,6 +73,52 @@ test("a new star notifies the owner once per person, and repeats, removals, self
     await db.collection("notificationEvents").insertOne({ eventId: starEventId(otherProject.toHexString(), "fan-3", collisionAt), type: "project.starred", schemaVersion: 1, subjectId: otherProject.toHexString(), actorId: "fan-3", starredProjectId: otherProject.toHexString(), occurredAt: collisionAt, state: "processed", attempts: 1, nextAttemptAt: collisionAt })
     await assert.rejects(() => setProjectStar(db, otherProject, "fan-3", true, client, collisionAt))
     assert.equal(await db.collection("projectStars").countDocuments({ projectId: otherProject, userId: "fan-3" }), 0)
+  } finally {
+    await client.db(name).dropDatabase()
+    await client.close()
+  }
+})
+
+test("concurrent workers group each project activity without losing events", async () => {
+  const client = new MongoClient(process.env.MONGODB_URI!, { directConnection: true, serverSelectionTimeoutMS: 5000 })
+  const name = `notification_concurrent_${randomUUID().replaceAll("-", "")}`
+  try {
+    await client.connect()
+    const db = client.db(name)
+    const projectId = new ObjectId()
+    const now = new Date()
+    await db.collection("projects").insertOne({ _id: projectId, ownerId: "owner", title: "Project" })
+    const eventBase = { schemaVersion: 1, subjectId: projectId.toHexString(), occurredAt: now, state: "pending", attempts: 0, nextAttemptAt: now }
+    const events = Array.from({ length: 8 }, (_, i) => [
+      { ...eventBase, eventId: `star-${i}`, type: "project.starred", actorId: `actor-${i}`, starredProjectId: projectId.toHexString() },
+      { ...eventBase, eventId: `reference-${i}`, type: "project.referenced", actorId: `actor-${i}`, referencedProjectId: projectId.toHexString(), referencingProjectId: new ObjectId().toHexString() },
+    ]).flat()
+    await db.collection("notificationEvents").insertMany(events)
+    for (let retry = 0; retry < 8; retry++) {
+      await db.collection("notificationEvents").updateMany({ state: "pending" }, { $set: { nextAttemptAt: new Date(0) } })
+      await Promise.all(Array.from({ length: 8 }, (_, i) => processNotificationOutbox(db, `concurrent-${i}`, 2)))
+      if (await db.collection("notificationEvents").countDocuments({ state: { $ne: "processed" } }) === 0) break
+    }
+    assert.equal(await db.collection("notificationEvents").countDocuments({ state: { $ne: "processed" } }), 0)
+    for (const type of ["project.starred", "project.referenced"]) {
+      const groups = await db.collection<{ count: number; eventIds: string[] }>("notifications").find({ recipientId: "owner", type }).toArray()
+      assert.equal(groups.length, 1)
+      assert.equal(groups[0].count, 8)
+      assert.equal(groups[0].eventIds.length, 8)
+    }
+    const earlier = new Date(now.getTime() - 60 * 60 * 1000)
+    const referenceBefore = await db.collection<{ latestReferencingProjectId: string }>("notifications").findOne({ recipientId: "owner", type: "project.referenced" })
+    const delayed = { ...eventBase, eventId: "delayed-reference", type: "project.referenced", actorId: "delayed-actor", referencedProjectId: projectId.toHexString(), referencingProjectId: new ObjectId().toHexString(), occurredAt: earlier, nextAttemptAt: new Date(0) }
+    await db.collection("notificationEvents").insertOne(delayed)
+    await processNotificationOutbox(db, "delayed")
+    await db.collection("notificationEvents").updateOne({ eventId: delayed.eventId }, { $set: { state: "pending", nextAttemptAt: new Date(0) } })
+    await processNotificationOutbox(db, "delayed")
+    const referenceAfter = await db.collection<{ count: number; eventIds: string[]; firstOccurredAt: Date; updatedAt: Date; latestReferencingProjectId: string }>("notifications").findOne({ recipientId: "owner", type: "project.referenced" })
+    assert.equal(referenceAfter?.count, 9)
+    assert.equal(referenceAfter?.eventIds.length, 9)
+    assert.equal(referenceAfter?.firstOccurredAt.getTime(), earlier.getTime())
+    assert.equal(referenceAfter?.updatedAt.getTime(), now.getTime())
+    assert.equal(referenceAfter?.latestReferencingProjectId, referenceBefore?.latestReferencingProjectId)
   } finally {
     await client.db(name).dropDatabase()
     await client.close()

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-const { formatSavedLabel } = await import(new URL("../lib/projects/saved.ts", import.meta.url).href)
+const { formatSavedLabel } = await import(new URL("../apps/web/lib/projects/saved.ts", import.meta.url).href)
 
 test("formats saved project labels for recent saves", () => {
   const now = new Date(2026, 2, 11, 15, 0, 0)
