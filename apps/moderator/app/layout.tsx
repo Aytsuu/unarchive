@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import { Geist_Mono } from "next/font/google"
 import localFont from "next/font/local"
+import { QueryProvider } from "@/components/query-provider"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import "../../web/app/globals.css"
 
 const googleSans = localFont({
@@ -25,7 +27,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" style={{ colorScheme: "light" }} className={`${googleSans.variable} ${geistMono.variable} h-full font-sans antialiased`}>
-      <body className="min-h-full bg-background text-foreground">{children}</body>
+      <body className="min-h-full bg-background text-foreground"><QueryProvider><TooltipProvider>{children}</TooltipProvider></QueryProvider></body>
     </html>
   )
 }

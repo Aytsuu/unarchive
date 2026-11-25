@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react"
+import { useRef, useState, type ChangeEvent, type DragEvent } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
 import { ProjectCredits } from "@/components/publish/project-credits"
@@ -15,9 +16,10 @@ import { TopicsSelect } from "@/components/publish/topics-select"
 import type { ReferenceProject } from "@/components/publish/reference-projects"
 import { useInstitutions } from "@/components/institutions/institution-catalog"
 import { matchInstitutionName } from "@/lib/institutions/match"
+import { SuggestionPopover } from "@/components/publish/suggestion-popover"
+import type { ManuscriptCandidate, ManuscriptCandidates, ManuscriptField } from "@/lib/manuscript/parser"
 
 const ManuscriptReview = dynamic(() => import("@/components/publish/manuscript-review").then((module) => module.ManuscriptReview), { ssr: false })
-type ManuscriptField = "title" | "description" | "abstract" | "institution" | "authors" | "year"
 
 export function PublishForm() {
   const [step, setStep] = useState(1)
@@ -29,7 +31,6 @@ export function PublishForm() {
   const [links, setLinks] = useState<RepeatableField[]>([])
   const [photos, setPhotos] = useState<File[]>([])
   const [institution, setInstitution] = useState("")
-  const [institutionMatchStatus, setInstitutionMatchStatus] = useState("")
   const { data: institutions, isError: institutionDirectoryError, refetch: retryInstitutions } = useInstitutions()
   const [dateEnded, setDateEnded] = useState("")
   const [contributors, setContributors] = useState<RepeatableField[]>([])
@@ -37,19 +38,13 @@ export function PublishForm() {
   const [publishRights, setPublishRights] = useState(false)
   const [contributorAccuracy, setContributorAccuracy] = useState(false)
   const [status, setStatus] = useState("")
-  const [notice, setNotice] = useState("")
   const [manuscriptSession, setManuscriptSession] = useState(0)
-  const [manuscriptSources, setManuscriptSources] = useState<ManuscriptField[]>([])
-  const [sourceRequest, setSourceRequest] = useState<{ field: ManuscriptField; sequence: number }>()
+  const [manuscriptResults, setManuscriptResults] = useState<ManuscriptCandidates>({ title: [], description: [], abstract: [], institution: [], authors: [], year: [] })
+  const [viewRequest, setViewRequest] = useState<{ candidate: ManuscriptCandidate; sequence: number }>()
   const [pending, setPending] = useState(false)
   const pendingRef = useRef(false)
   const submissionId = useRef<string | null>(null)
-  const noticeRef = useRef<HTMLParagraphElement>(null)
   const missingRequired = (step === 1 && !title.trim()) || (step === 3 && (!publishRights || !contributorAccuracy))
-
-  useEffect(() => {
-    if (notice) noticeRef.current?.focus()
-  }, [notice])
 
   function clearProject() {
     setStep(1)
@@ -60,7 +55,6 @@ export function PublishForm() {
     setLinks([])
     setPhotos([])
     setInstitution("")
-    setInstitutionMatchStatus("")
     setDateEnded("")
     setContributors([])
     setReferenceProjects([])
@@ -68,9 +62,9 @@ export function PublishForm() {
     setContributorAccuracy(false)
     setStatus("")
     setManuscriptSession((current) => current + 1)
-    setManuscriptSources([])
+    setManuscriptResults({ title: [], description: [], abstract: [], institution: [], authors: [], year: [] })
+    setViewRequest(undefined)
     submissionId.current = null
-    setNotice("Submitted for moderation. It stays off the public site until a moderator approves it.")
   }
 
   function addContributor() {
@@ -84,15 +78,11 @@ export function PublishForm() {
     if (field === "abstract") setAbstract(value)
     if (field === "institution") {
       if (!institutions) {
-        if (institutionDirectoryError) {
-          setInstitutionMatchStatus("The institution directory is unavailable. Retrying; please try applying the institution again.")
-          void retryInstitutions()
-        } else setInstitutionMatchStatus("The institution directory is loading. Please try applying the institution again in a moment.")
+        if (institutionDirectoryError) void retryInstitutions()
         return false
       }
       const matched = matchInstitutionName(value, institutions.map((item) => item.name))
       setInstitution(matched ?? value)
-      setInstitutionMatchStatus(matched ? `Matched to ${matched}.` : "No unique directory match found. The extracted name was kept; please verify it in project credits.")
     }
     if (field === "year") {
       if (!/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(value)) return false
@@ -103,18 +93,11 @@ export function PublishForm() {
       if (contributors.some(({ value: current }) => current.trim()) && !window.confirm("Replace the authors and contributors already entered with these names?")) return false
       setContributors(names.map((name) => ({ id: nextFieldId.current++, value: name })))
     }
-    setManuscriptSources((current) => current.includes(field) ? current : [...current, field])
     return true
   }
 
-  function forgetManuscriptSource(field: ManuscriptField) {
-    setManuscriptSources((current) => current.filter((item) => item !== field))
-  }
-
-  function showManuscriptSource(field: ManuscriptField) {
-    setStep(1)
-    setSourceRequest((current) => ({ field, sequence: (current?.sequence ?? 0) + 1 }))
-    requestAnimationFrame(() => document.getElementById("manuscript-review")?.scrollIntoView({ behavior: "smooth", block: "start" }))
+  function renderSuggestion(field: ManuscriptField) {
+    return <SuggestionPopover field={field} candidates={manuscriptResults[field]} onApply={(candidate) => applyManuscriptField(field, field === "year" ? candidate.monthYear ?? "" : candidate.value)} onView={(candidate) => setViewRequest((current) => ({ candidate, sequence: (current?.sequence ?? 0) + 1 }))} />
   }
 
   function validateDetails() {
@@ -146,7 +129,6 @@ export function PublishForm() {
   async function nextStep() {
     if (pendingRef.current || missingRequired) return
     setStatus("")
-    setNotice("")
     if (step === 1) {
       const error = validateDetails()
       if (error) return setStatus(error)
@@ -250,48 +232,46 @@ export function PublishForm() {
         </div>
       </header>
 
-      <div hidden={step !== 1} className="mx-auto mt-8 max-w-7xl">
-        <ManuscriptReview key={manuscriptSession} onApply={applyManuscriptField} sourceRequest={sourceRequest} onSourcesReset={() => { setManuscriptSources([]); setInstitutionMatchStatus("") }} />
-        {institutionMatchStatus && <p role="status" className="mt-2 text-sm text-muted-foreground">{institutionMatchStatus}</p>}
-      </div>
+      <ManuscriptReview key={manuscriptSession} uploadVisible={step === 1} onApply={applyManuscriptField} viewRequest={viewRequest} onResults={setManuscriptResults} onSourcesReset={() => { setManuscriptResults({ title: [], description: [], abstract: [], institution: [], authors: [], year: [] }); setViewRequest(undefined) }} />
 
-      <section className="mx-auto mt-12.75 flex w-full max-w-89.25 flex-col items-center" aria-busy={pending}>
+      <section className="mx-auto mt-12.75 flex w-full max-w-112 flex-col items-center" aria-busy={pending}>
         <Progress value={step * 100 / 3} aria-label="Publish progress" aria-valuetext={`Step ${step} of 3`} className="mx-auto w-55 max-w-full **:data-[slot=progress-track]:h-2" />
         <p className="sr-only" aria-live="polite">Step {step} of 3</p>
         <h1 className="mt-8.5 text-center text-[26px] font-medium leading-7.75">Share Your Work</h1>
         <p className="text-center text-xl font-medium leading-6">Unarchive your rotting capstone</p>
         {status && <p role="alert" className="mt-4 text-center text-sm text-destructive">{status}</p>}
-        {notice && <p ref={noticeRef} tabIndex={-1} role="status" className="mt-4 text-center text-sm outline-none">{notice}</p>}
-        {pending && <p role="status" className="mt-4 text-center text-sm text-muted-foreground">Publishing your project...</p>}
 
         {step === 1 ? (
           <div className="mt-12.5 w-full">
-            <Input aria-label="Project title" placeholder="Add title" required maxLength={200} value={title} onChange={(event) => { setTitle(event.target.value); forgetManuscriptSource("title") }}/>
-            {manuscriptSources.includes("title") && <button type="button" className="mt-1 text-sm underline" onClick={() => showManuscriptSource("title")}>View title source</button>}
-            <Textarea aria-label="Short description" placeholder="Add short description" maxLength={5000} value={description} onChange={(event) => { setDescription(event.target.value); forgetManuscriptSource("description") }} className="mt-6.5 h-20" />
-            {manuscriptSources.includes("description") && <button type="button" className="mt-1 text-sm underline" onClick={() => showManuscriptSource("description")}>View description source</button>}
-            <Textarea aria-label="Abstract" placeholder="Add abstract" maxLength={10000} value={abstract} onChange={(event) => { setAbstract(event.target.value); forgetManuscriptSource("abstract") }} className="mt-6.5 h-29" />
-            {manuscriptSources.includes("abstract") && <button type="button" className="mt-1 text-sm underline" onClick={() => showManuscriptSource("abstract")}>View abstract source</button>}
-            <div className="mt-8.5 px-1.25">
-              <h2 className="text-lg font-medium">Topics</h2>
-              <div className="mt-3.5"><TopicsSelect value={topics} onChange={setTopics} /></div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2"><Label htmlFor="publish-title">Project Title</Label>{renderSuggestion("title")}</div>
+              <Input id="publish-title" variant="soft" placeholder="Add title" required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)}/>
             </div>
-            <div className="mt-8.5 px-1.25">
-              <h2 className="text-lg font-medium">Links</h2>
-              <p className="mt-1.75 text-base font-medium">Add relevant links of this project</p>
-              <div className="mt-3.5"><RepeatableFields kind="link" fields={links} onAdd={addLink} onChange={setLinks} /></div>
+            <div className="mt-6.5 space-y-2">
+              <div className="flex items-center gap-2"><Label htmlFor="publish-description">Short Description</Label>{renderSuggestion("description")}</div>
+              <Textarea id="publish-description" placeholder="Add short description" maxLength={5000} value={description} onChange={(event) => setDescription(event.target.value)} className="h-20" />
             </div>
-            <div className="mt-3.5 px-1.25">
-              <h2 className="text-lg font-medium">Demos</h2>
-              <p className="mt-1.75 text-base font-medium">Add relevant demo images of this project</p>
+            <div className="mt-6.5 space-y-2">
+              <div className="flex items-center gap-2"><Label htmlFor="publish-abstract">Abstract</Label>{renderSuggestion("abstract")}</div>
+              <Textarea id="publish-abstract" placeholder="Add abstract" maxLength={10000} value={abstract} onChange={(event) => setAbstract(event.target.value)} className="h-44" />
+            </div>
+            <div className="mt-8.5 space-y-2 px-1.25">
+              <h2 className="text-sm font-medium">Topics</h2>
+              <TopicsSelect value={topics} onChange={setTopics} variant="soft" />
+            </div>
+            <div className="mt-8.5 space-y-2 px-1.25">
+              <h2 className="text-sm font-medium">Links</h2>
+              <p className="text-sm text-muted-foreground">Add relevant links of this project</p>
+              <RepeatableFields kind="link" fields={links} onAdd={addLink} onChange={setLinks} variant="soft" />
+            </div>
+            <div className="mt-8.5 space-y-2 px-1.25">
+              <h2 className="text-sm font-medium">Demos</h2>
+              <p className="text-sm text-muted-foreground">Add relevant demo images of this project</p>
               <DemoUploader photos={photos} onPhotosChange={onPhotosChange} onDrop={onDrop} onRemove={(index) => setPhotos((current) => current.filter((_, i) => i !== index))} />
             </div>
           </div>
         ) : step === 2 ? (
-          <><ProjectCredits institution={institution} onInstitutionChange={(value) => { setInstitution(value); setInstitutionMatchStatus(""); forgetManuscriptSource("institution") }} dateEnded={dateEnded} onDateEndedChange={(value) => { setDateEnded(value); forgetManuscriptSource("year") }} contributors={contributors} onAddContributor={() => { addContributor(); forgetManuscriptSource("authors") }} onContributorsChange={(value) => { setContributors(value); forgetManuscriptSource("authors") }} referenceProjects={referenceProjects} onReferenceProjectsChange={setReferenceProjects} />
-          {manuscriptSources.includes("year") && <button type="button" className="mt-4 self-start text-sm underline" onClick={() => showManuscriptSource("year")}>View completion year source</button>}
-          {manuscriptSources.includes("institution") && <button type="button" className="mt-4 self-start text-sm underline" onClick={() => showManuscriptSource("institution")}>View institution source</button>}
-          {manuscriptSources.includes("authors") && <button type="button" className="mt-2 self-start text-sm underline" onClick={() => showManuscriptSource("authors")}>View authors source</button>}</>
+          <ProjectCredits variant="soft" institution={institution} onInstitutionChange={setInstitution} dateEnded={dateEnded} onDateEndedChange={setDateEnded} contributors={contributors} onAddContributor={addContributor} onContributorsChange={setContributors} referenceProjects={referenceProjects} onReferenceProjectsChange={setReferenceProjects} renderSuggestion={renderSuggestion} />
         ) : (
           <PublishConsents publishRights={publishRights} contributorAccuracy={contributorAccuracy} onPublishRightsChange={setPublishRights} onContributorAccuracyChange={setContributorAccuracy} disabled={pending} />
         )}

@@ -2,7 +2,6 @@
 
 import { SearchIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +9,6 @@ import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { HomeProject } from "@/components/home/home-screen"
-import searchIcon from "@/components/home/search.svg"
 
 export function HomeSearch({ search, projects, className }: { search: string; projects: HomeProject[]; className?: string }) {
   const router = useRouter()
@@ -35,7 +33,10 @@ export function HomeSearch({ search, projects, className }: { search: string; pr
     <Dialog open={open} onOpenChange={changeOpen}>
       <Tooltip>
         <DialogTrigger render={<TooltipTrigger render={<Button type="button" variant="outline" size="icon" className={className} aria-label="Search projects" />} />}>
-          <Image src={searchIcon} alt="" className="size-4" />
+          <span className="flex size-4 items-center justify-center" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/assets/icons/search.svg" alt="" className="h-4 w-auto -scale-x-100" />
+          </span>
         </DialogTrigger>
         <TooltipContent side="bottom">Search</TooltipContent>
       </Tooltip>

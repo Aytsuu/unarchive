@@ -72,7 +72,7 @@ export function DevAutofillToolbar() {
   if (!visible && !showGrant && !grantMessage) return null
 
   return (
-    <aside data-dev-autofill className="fixed right-4 bottom-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2" aria-label="Development tools">
+    <aside data-dev-autofill className="fixed bottom-4 left-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col items-start gap-2" aria-label="Development tools">
       {grantMessage ? <p role="status" className="rounded-2xl bg-background px-3 py-2 text-xs text-foreground shadow-sm">{grantMessage}</p> : null}
       {visible || showGrant ? <div className="flex items-center gap-2">
         {visible ? <Button type="button" size="sm" onClick={fill} disabled={pending} className="border-2 border-[#646464] bg-[#4d4d4d] hover:bg-[#616161]">{pending ? "Filling..." : "Auto-fill"}</Button> : null}

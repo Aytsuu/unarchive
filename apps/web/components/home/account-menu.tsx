@@ -19,7 +19,7 @@ const accountTabs = [
   { value: "settings", label: "Settings" },
 ] as const
 
-export function AccountMenu({ user, avatarClassName }: { user: HomeUser; avatarClassName?: string }) {
+export function AccountMenu({ user, avatarClassName, signedOutHref = "/home" }: { user: HomeUser; avatarClassName?: string; signedOutHref?: string }) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -44,7 +44,11 @@ export function AccountMenu({ user, avatarClassName }: { user: HomeUser; avatarC
       queryClient.clear()
       setOpen(false)
       setConfirmSignOut(false)
-      router.replace("/home")
+      if (/^https?:\/\//.test(signedOutHref)) {
+        window.location.assign(signedOutHref)
+        return
+      }
+      router.replace(signedOutHref)
       router.refresh()
     } catch {
       setError(true)

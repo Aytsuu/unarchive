@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/combobox"
 import { PROJECT_TOPICS } from "@/lib/project-topics.mjs"
 
-export function TopicsSelect({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) {
+export function TopicsSelect({ value, onChange, variant = "default" }: { value: string[]; onChange: (value: string[]) => void; variant?: "default" | "soft" }) {
   const anchor = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function TopicsSelect({ value, onChange }: { value: string[]; onChange: (
 
   return (
     <Combobox multiple items={PROJECT_TOPICS} value={value} onValueChange={onChange}>
-      <ComboboxChips ref={anchor} data-dev-topics aria-label="Topics" className="w-full bg-background">
+      <ComboboxChips ref={anchor} data-dev-topics aria-label="Topics" className={`w-full bg-background${variant === "soft" ? " rounded-xl" : ""}`}>
         {value.map((topic) => (
           <ComboboxChip key={topic} showRemove={false} aria-label={topic} aria-description="Press Backspace or Delete to remove" className="gap-1 bg-secondary pr-1 text-secondary-foreground">
             {topic}

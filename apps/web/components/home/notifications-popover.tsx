@@ -38,7 +38,12 @@ function NotificationsEmptyState() {
   )
 }
 
-export function NotificationsPopover() {
+function notificationHref(target: NonNullable<NotificationItem["target"]>, linkBase?: string) {
+  const path = target.type === "submission" ? `/submissions/${target.id}` : `/projects/${target.id}`
+  return linkBase ? `${linkBase.replace(/\/$/, "")}${path}` : path
+}
+
+export function NotificationsPopover({ linkBase }: { linkBase?: string } = {}) {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState<Filter>("all")
   const [data, setData] = useState<NotificationList | null>(null)
@@ -135,7 +140,7 @@ export function NotificationsPopover() {
                           </div>
                           {item.readAt ? null : <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-xs" onClick={() => void markRead({ id: item.id })}>Mark read</Button>}
                         </div>
-                        {item.target ? <Link href={item.target.type === "submission" ? `/submissions/${item.target.id}` : `/projects/${item.target.id}`} className="mt-2 inline-block text-sm text-foreground underline-offset-4 hover:underline" onClick={() => setOpen(false)}>{item.target.type === "submission" ? "Review requested changes" : "View project"}</Link> : null}
+                        {item.target ? linkBase ? <a href={notificationHref(item.target, linkBase)} className="mt-2 inline-block text-sm text-foreground underline-offset-4 hover:underline" onClick={() => setOpen(false)}>{item.target.type === "submission" ? "Review requested changes" : "View project"}</a> : <Link href={notificationHref(item.target)} className="mt-2 inline-block text-sm text-foreground underline-offset-4 hover:underline" onClick={() => setOpen(false)}>{item.target.type === "submission" ? "Review requested changes" : "View project"}</Link> : null}
                       </li>)}
                     </ul>
                     {data?.nextCursor ? <Button type="button" variant="ghost" size="sm" className="mt-3" onClick={() => void load(filter, data.nextCursor)}>Load more</Button> : null}

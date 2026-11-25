@@ -55,7 +55,15 @@ export function ProjectListing({ projects, total, search, page, pageSize, scope,
             <div className="grid grid-cols-1 gap-3.75 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {projects.map((project) => <ProjectCard key={project.id} project={project} scope={scope} />)}
             </div>
-            {projects.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">{search ? "No projects match your search." : "No projects have been published yet."}</p>}
+            {projects.length === 0 && (
+              <div className="flex flex-col items-center justify-center gap-3 py-10">
+                <span className="flex size-24 items-center justify-center" aria-hidden="true">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/assets/icons/package-open.svg" alt="" className="size-24" />
+                </span>
+                <p className="text-center text-sm text-muted-foreground">{search ? "No projects match your search." : "No projects have been published yet."}</p>
+              </div>
+            )}
             {pages > 1 && <nav aria-label="Project pagination" className="mt-6 flex items-center justify-center gap-4">
               {page > 1 ? <Link href={pageHref(page - 1)} className={buttonVariants({ variant: "outline" })}>Previous</Link> : <Button variant="outline" disabled>Previous</Button>}
               <span className="text-sm text-muted-foreground" aria-live="polite">Page {page} of {pages}</span>
