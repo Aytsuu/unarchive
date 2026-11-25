@@ -4,8 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/ui/combobox"
 import { normalizeInstitution, useInstitutions } from "@/components/institutions/institution-catalog"
 
-export function InstitutionSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function InstitutionSelect({ value, onChange, variant = "default" }: { value: string; onChange: (value: string) => void; variant?: "default" | "soft" }) {
   const [input, setInput] = useState(value)
+  const [previousValue, setPreviousValue] = useState(value)
+  if (value !== previousValue) {
+    setPreviousValue(value)
+    setInput(value)
+  }
   const anchor = useRef<HTMLDivElement>(null)
   const { data = [], isError, isPending, refetch } = useInstitutions()
   const query = normalizeInstitution(input)
@@ -33,7 +38,7 @@ export function InstitutionSelect({ value, onChange }: { value: string; onChange
 
   return <div ref={anchor} data-dev-institution aria-label="Institution" className="space-y-2">
     <Combobox items={choices} filteredItems={choices} value={value || null} onValueChange={(next: string | null) => { setInput(next ?? ""); onChange(next ?? "") }} inputValue={input} onInputValueChange={setInput}>
-      <ComboboxInput id="institution" aria-label="Institution" placeholder="Search institutions" maxLength={200} showClear className="w-full bg-background" />
+      <ComboboxInput id="institution" aria-label="Institution" placeholder="Search institutions" maxLength={200} showClear className={`w-full bg-background${variant === "soft" ? " rounded-xl" : ""}`} />
       <ComboboxContent>
         {isPending && <p role="status" className="px-3 py-2 text-sm text-muted-foreground">Loading institutions...</p>}
         {isError && <p className="px-3 py-2 text-sm text-muted-foreground">Directory unavailable. You can still enter an institution. <button type="button" className="underline" onClick={() => refetch()}>Retry</button></p>}

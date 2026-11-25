@@ -21,7 +21,7 @@ function readProjects(payload: unknown): ReferenceProject[] {
   return data.projects.filter((project): project is ReferenceProject => Boolean(project && typeof project === "object" && typeof project.id === "string" && typeof project.title === "string"))
 }
 
-export function ReferenceProjects({ value, onChange }: { value: ReferenceProject[]; onChange: (projects: ReferenceProject[]) => void }) {
+export function ReferenceProjects({ value, onChange, variant = "default" }: { value: ReferenceProject[]; onChange: (projects: ReferenceProject[]) => void; variant?: "default" | "soft" }) {
   const anchor = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState("")
@@ -60,7 +60,7 @@ export function ReferenceProjects({ value, onChange }: { value: ReferenceProject
         itemToStringLabel={(project: ReferenceProject) => project.title}
         isItemEqualToValue={(a: ReferenceProject, b: ReferenceProject) => a.id === b.id}
         inputValue={input} onInputValueChange={setInput} open={open} onOpenChange={setOpen}>
-        <ComboboxChips ref={anchor} className="w-full bg-background">
+        <ComboboxChips ref={anchor} className={`w-full bg-background${variant === "soft" ? " rounded-xl" : ""}`}>
           {value.map((project) => <ComboboxChip key={project.id} showRemove={false} aria-label={project.title} className="max-w-full gap-1 bg-secondary pr-1 text-secondary-foreground">
             <span className="truncate">{project.title}</span>
             <ComboboxPrimitive.ChipRemove aria-label={`Remove ${project.title}`} className="flex size-4 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">

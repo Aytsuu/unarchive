@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const validMonth = /^(?!0000)\d{4}-(0[1-9]|1[0-2])$/
 
-export function MonthPicker({ id, label, value, min, onChange }: { id: string; label: string; value: string; min?: string; onChange: (value: string) => void }) {
+export function MonthPicker({ id, label, value, min, onChange, variant = "default" }: { id: string; label: string; value: string; min?: string; onChange: (value: string) => void; variant?: "default" | "soft" }) {
   const [open, setOpen] = useState(false)
   const [year, setYear] = useState("")
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -34,7 +34,7 @@ export function MonthPicker({ id, label, value, min, onChange }: { id: string; l
   const display = validMonth.test(value) ? `${months[Number(value.slice(5)) - 1]} ${value.slice(0, 4)}` : "Month year"
   return (
     <Popover open={open} onOpenChange={changeOpen}>
-      <PopoverTrigger render={<Button ref={triggerRef} id={id} type="button" variant="outline" aria-label={label} data-dev-month-picker className="w-full min-w-0 justify-between font-normal" />}>
+      <PopoverTrigger render={<Button ref={triggerRef} id={id} type="button" variant="outline" aria-label={label} data-dev-month-picker className={`w-full min-w-0 justify-between font-normal${variant === "soft" ? " rounded-xl" : ""}`} />}>
         <span className={value ? "truncate" : "truncate text-muted-foreground"}>{display}</span>
         <HugeiconsIcon icon={Calendar03Icon} size={16} aria-hidden="true" />
       </PopoverTrigger>
@@ -43,7 +43,7 @@ export function MonthPicker({ id, label, value, min, onChange }: { id: string; l
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Previous year" disabled={!validYear || year === "0001"} onClick={() => setYear(String(Number(year) - 1).padStart(4, "0"))}>
             <HugeiconsIcon icon={ArrowLeft01Icon} aria-hidden="true" />
           </Button>
-          <Input type="number" aria-label="Year" min={1} max={9999} value={year} onChange={(event) => setYear(event.target.value)} className="w-24 text-center" />
+          <Input variant={variant} type="number" aria-label="Year" min={1} max={9999} value={year} onChange={(event) => setYear(event.target.value)} className="w-24 text-center" />
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Next year" disabled={!validYear || year === "9999"} onClick={() => setYear(String(Number(year) + 1).padStart(4, "0"))}>
             <HugeiconsIcon icon={ArrowRight01Icon} aria-hidden="true" />
           </Button>

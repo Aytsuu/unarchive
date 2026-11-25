@@ -2,6 +2,7 @@ import { connection } from "next/server"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { getSubmission } from "@unarchive/domain/submissions"
+import { ModerationHeader } from "../../../components/moderation-header"
 import { requireModerator } from "../../../lib/gate"
 import { db } from "@unarchive/server/mongodb"
 import { ReviewDecision } from "./decision-form"
@@ -19,11 +20,14 @@ function statusLine(submission: { status: string; submittedAt: string; decidedAt
 async function Review({ params }: { params: Promise<{ id: string }> }) {
   await connection()
   const { id } = await params
-  await requireModerator()
+  const user = await requireModerator()
+  const home = process.env.WEB_APP_URL || process.env.BETTER_AUTH_URL || "http://localhost:3000"
   const submission = await getSubmission(db, id)
   if (!submission) notFound()
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 pt-9 pb-16">
+    <div className="min-h-dvh">
+    <ModerationHeader home={home} user={{ id: user.id, name: user.name, email: user.email, image: user.image ?? null }} />
+    <main className="mx-auto w-full max-w-3xl px-5 pt-8 pb-16">
       <a href="/" className="text-sm font-medium text-muted-foreground">Back to moderation</a>
       <p className="mt-8 text-sm">{submission.ownerName}</p>
       <p className="mt-1 text-xs text-muted-foreground">{submission.institution || "Institution not listed"}</p>
@@ -42,6 +46,7 @@ async function Review({ params }: { params: Promise<{ id: string }> }) {
       {submission.links.length > 0 ? <section className="mt-8"><h2 className="text-base font-medium">Links</h2><ul className="mt-2 text-sm">{submission.links.map((link: string) => <li key={link}><a href={link} className="underline underline-offset-4">{link}</a></li>)}</ul></section> : null}
       {submission.status === "pending" ? <ReviewDecision submissionId={submission.id} /> : null}
     </main>
+    </div>
   )
 }
 

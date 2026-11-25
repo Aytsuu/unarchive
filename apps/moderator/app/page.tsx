@@ -1,6 +1,7 @@
 import { connection } from "next/server"
 import { Suspense } from "react"
 import { listPendingSubmissions, promoteApprovedSubmissions } from "@unarchive/domain/submissions"
+import { ModerationHeader } from "../components/moderation-header"
 import { requireModerator } from "../lib/gate"
 import { refreshPublicList } from "../lib/refresh-public-list"
 import { db, mongoClient } from "@unarchive/server/mongodb"
@@ -18,10 +19,7 @@ async function Queue() {
   const home = process.env.WEB_APP_URL || process.env.BETTER_AUTH_URL || "http://localhost:3000"
   return (
     <div className="min-h-dvh">
-      <header className="flex items-center justify-between gap-4 px-5 pt-9 sm:px-11">
-        <a href={home} className="text-xl font-medium">Unarchive</a>
-        <p className="truncate text-sm text-muted-foreground">{user.name || user.email}</p>
-      </header>
+      <ModerationHeader home={home} user={{ id: user.id, name: user.name, email: user.email, image: user.image ?? null }} />
       <main className="mx-auto w-full max-w-3xl px-5 pt-12 pb-16">
         <h1 id="moderation-heading" className="text-3xl font-medium tracking-tight">Moderation</h1>
         <p className="mt-2 text-sm text-muted-foreground">Projects submitted for publication. Pending submissions stay off the public site until a moderator approves them.</p>

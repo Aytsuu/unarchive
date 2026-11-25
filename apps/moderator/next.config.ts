@@ -24,6 +24,15 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@unarchive/domain", "@unarchive/server"],
   cacheComponents: true,
   partialPrefetching: true,
+  async rewrites() {
+    const web = (process.env.WEB_APP_URL || process.env.BETTER_AUTH_URL || "http://localhost:3000").replace(/\/$/, "")
+    return [
+      { source: "/assets/:path*", destination: `${web}/assets/:path*` },
+      { source: "/api/notifications", destination: `${web}/api/notifications` },
+      { source: "/api/notifications/:path*", destination: `${web}/api/notifications/:path*` },
+      { source: "/api/auth/:path*", destination: `${web}/api/auth/:path*` },
+    ]
+  },
   turbopack: {
     root: repoRoot,
     rules: {
