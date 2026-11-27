@@ -38,15 +38,17 @@ ifeq ($(firstword $(MAKECMDGOALS)),db-user)
   endif
 endif
 
-.PHONY: help project ps logs stack stack-run stack-stop stack-quit dev dev-reset del del-container del-volume db db-collections db-shell db-reset-auth db-reset-projects db-user
+MCP_URL ?= http://127.0.0.1:3000/api/mcp
+
+.PHONY: help project ps logs stack stack-run stack-stop stack-quit dev dev-reset del del-container del-volume db db-collections db-shell db-reset-auth db-reset-projects db-user mcp-inspector
 
 help:
 	@Write-Output 'Worktree commands. Hyphen form works too (make stack-stop).'
 	@Write-Output ''
-	@Write-Output '  make stack run            Start MongoDB, the web app, and the moderator app'
-	@Write-Output '  make stack stop           Stop both dev servers and MongoDB'
-	@Write-Output '  make stack quit           Stop both dev servers, MongoDB, and Docker Desktop'
-	@Write-Output '  make dev reset            Stop both dev servers and MongoDB, then start them again'
+	@Write-Output '  make stack run            Start MongoDB, both apps, and the webhook and notification workers'
+	@Write-Output '  make stack stop           Stop both dev servers, both workers, and MongoDB'
+	@Write-Output '  make stack quit           Stop both dev servers, both workers, MongoDB, and Docker Desktop'
+	@Write-Output '  make dev reset            Stop the dev stack and MongoDB, then start them again'
 	@Write-Output '  make del container        Remove this worktree MongoDB container; keep the data volume'
 	@Write-Output '  make del volume CONFIRM=<project>   Remove this worktree MongoDB container and data volume'
 	@Write-Output '  make db-user email@example.com   Show that local user, accounts, moderator grant, and policy acceptance'
@@ -54,6 +56,8 @@ help:
 	@Write-Output '  make db shell             Open mongosh in this worktree MongoDB'
 	@Write-Output '  make db reset-auth        Delete local authentication records (asks for the database name)'
 	@Write-Output '  make db reset-projects    Delete local project and submission records (asks for the database name)'
+	@Write-Output '  make mcp-inspector        Open MCP Inspector against the local dev server'
+	@Write-Output '  make mcp-inspector MCP_URL=https://host/api/mcp'
 	@Write-Output '  make ps                   Show this worktree Compose containers'
 	@Write-Output '  make logs                 Show recent MongoDB logs'
 	@Write-Output '  make project              Print the Compose project name for this worktree'
@@ -108,6 +112,9 @@ db-reset-auth:
 
 db-reset-projects:
 	@Set-Location -LiteralPath '$(ROOT)'; node --env-file=.env.local scripts/reset-projects.mjs; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE }
+
+mcp-inspector:
+	@$$url = '$(MCP_URL)'.Trim(); if (-not $$url) { Write-Host 'Set MCP_URL to the Streamable HTTP endpoint, such as http://127.0.0.1:3000/api/mcp.'; exit 1 }; $$inspectorArgs = @('--yes','@modelcontextprotocol/inspector@latest','--transport','http','--server-url',$$url); if ($$url -match 'ngrok') { $$inspectorArgs += @('--header','ngrok-skip-browser-warning: 1') }; Write-Output "Opening MCP Inspector for $$url"; & npx.cmd @inspectorArgs; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE }
 
 db-user:
 	@$(DBPREP); $$email = '$(ARGS)'.Trim(); if ($$email -notmatch '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$$') { Write-Host 'Usage: make db-user email@example.com'; exit 1 }; $$id = Invoke-Compose ps --status running -q mongodb; if (-not $$id) { Write-Host "MongoDB for $$project is not running. Start it with: make stack run"; exit 1 }; Invoke-Compose --progress quiet cp (Join-Path $$root 'scripts/mongo-user.js') mongodb:/tmp/unarchive-mongo-user.js | Out-Null; Write-Output ("project $$project database $$dbName"); Invoke-Compose exec -T -e ('MONGODB_DB_NAME=' + $$dbName) -e ('USER_EMAIL=' + $$email) mongodb mongosh --quiet --host 127.0.0.1 --file /tmp/unarchive-mongo-user.js; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE }

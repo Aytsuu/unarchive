@@ -4,7 +4,7 @@ import { parseListingParams } from "@/lib/projects/listing-params.mjs"
 import { PROJECT_TOPICS } from "@/lib/project-topics.mjs"
 import { auth } from "@/lib/auth"
 import { ObjectId } from "mongodb"
-import { db } from "@/lib/mongodb"
+import { db, mongoClient } from "@/lib/mongodb"
 import { ProjectReferenceNotFoundError } from "@/lib/projects/versions"
 import { insertPendingSubmission, SUBMISSIONS_COLLECTION } from "@unarchive/domain/submissions"
 import { getSavedProjectIds } from "@/lib/projects/saved"
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     const demos = await saveProjectDemos(files)
     const now = new Date()
     try {
-      await insertPendingSubmission(db, { id: projectId, ownerId: session.user.id, submittedAt: now, project, demos, ...(identity ? { idempotencyDigest: identity.digest } : {}) })
+      await insertPendingSubmission(db, { id: projectId, ownerId: session.user.id, submittedAt: now, project, demos, ...(identity ? { idempotencyDigest: identity.digest } : {}) }, process.env.NODE_ENV === "development" ? mongoClient : undefined)
     } catch (error) {
       let inserted
       try { inserted = await submissions.findOne({ _id: projectId }, { projection: { ownerId: 1, idempotencyDigest: 1, status: 1, snapshot: 1 } }) } catch {
