@@ -203,6 +203,43 @@ try {
     if ($moderator) { Write-Host "Moderator dev server is already running at http://localhost:$moderatorPort." }
     else { $started += Start-StackDevServer -Name 'moderator' -Port $moderatorPort -WorkingDirectory (Join-Path $root 'apps\moderator') }
 
+    $previousState = $null
+    if (Test-Path -LiteralPath $stateFile) {
+        try { $previousState = Get-Content -Raw -LiteralPath $stateFile | ConvertFrom-Json } catch { $previousState = $null }
+    }
+
+    function Get-RecordedWorker {
+        param([string]$Name)
+        if (-not $previousState) { return $null }
+        foreach ($recorded in @($previousState.servers)) {
+            if ($recorded.name -ne $Name) { continue }
+            if (Test-TrackedProcess -ProcessId ([int]$recorded.pid) -StartTicks ([long]$recorded.startTicks)) {
+                return [pscustomobject]@{ name = $Name; pid = [int]$recorded.pid; startTicks = [long]$recorded.startTicks; started = $false }
+            }
+        }
+        return $null
+    }
+
+    function Start-StackWorker {
+        param([string]$Name, [string]$Label, [string]$FilePath, [string[]]$ArgumentList)
+        $existing = Get-RecordedWorker -Name $Name
+        if ($existing) {
+            Write-Host "$Label is already running."
+            return $existing
+        }
+        Write-Host "Starting the $Label..."
+        $process = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $stateDir "$Name.log") -RedirectStandardError (Join-Path $stateDir "$Name-error.log")
+        return [pscustomobject]@{ name = $Name; pid = $process.Id; startTicks = $process.StartTime.ToUniversalTime().Ticks; started = $true; label = $Label }
+    }
+
+    $env:NODE_ENV = 'development'
+    $webhookScript = Join-Path $root 'scripts\process-publish-webhooks.mjs'
+    $npm = (Get-Command npm.cmd).Source
+    $workers = @(
+        (Start-StackWorker -Name 'publish-webhook' -Label 'publication webhook worker' -FilePath 'node.exe' -ArgumentList @('--experimental-strip-types', '--env-file=.env.local', "`"$webhookScript`"", '--watch'))
+        (Start-StackWorker -Name 'notifications' -Label 'notification worker' -FilePath $npm -ArgumentList @('run', 'notifications:work', '--', '--watch'))
+    )
+
     $records = @()
     foreach ($server in @($web, $moderator)) {
         if (-not $server) { continue }
@@ -212,9 +249,29 @@ try {
     foreach ($server in @($started)) {
         $records += [pscustomobject]@{ name = $server.name; pid = $server.pid; startTicks = $server.startTicks; port = $server.port }
     }
+    foreach ($worker in @($workers)) {
+        $records += [pscustomobject]@{ name = $worker.name; pid = $worker.pid; startTicks = $worker.startTicks }
+    }
     @{ servers = @($records) } | ConvertTo-Json -Depth 4 | Set-Content -Encoding ASCII $stateFile
 
+    function Test-StackWorkers {
+        foreach ($worker in @($workers)) {
+            if (-not $worker.started) { continue }
+            if (-not (Test-TrackedProcess -ProcessId $worker.pid -StartTicks $worker.startTicks)) {
+                throw "The $($worker.label) exited. Check .stack/$($worker.name)-error.log and .stack/$($worker.name).log."
+            }
+        }
+    }
+
     if (@($started).Count -eq 0) {
+        if (@($workers | Where-Object { $_.started }).Count -gt 0) {
+            $workerDeadline = (Get-Date).AddSeconds(5)
+            do {
+                Test-StackWorkers
+                if ((Get-Date) -ge $workerDeadline) { break }
+                Start-Sleep -Milliseconds 500
+            } while ($true)
+        }
         Write-Host "Web app is running at http://localhost:$webPort"
         Write-Host "Moderator app is running at http://localhost:$moderatorPort"
         exit 0
@@ -224,6 +281,7 @@ try {
     do {
         Start-Sleep -Seconds 1
         $ready = $true
+        Test-StackWorkers
         foreach ($server in @($started)) {
             if (-not (Test-TrackedProcess -ProcessId $server.pid -StartTicks $server.startTicks)) {
                 throw "The $($server.name) dev server exited. Check .stack/$($server.name)-error.log and .stack/$($server.name).log."
@@ -238,6 +296,9 @@ try {
     } while ((Get-Date) -lt $deadline)
     foreach ($server in @($started)) {
         if (Test-TrackedProcess -ProcessId $server.pid -StartTicks $server.startTicks) { & taskkill.exe /PID $server.pid /T /F | Out-Null }
+    }
+    foreach ($worker in @($workers)) {
+        if ($worker.started -and (Test-TrackedProcess -ProcessId $worker.pid -StartTicks $worker.startTicks)) { & taskkill.exe /PID $worker.pid /T /F | Out-Null }
     }
     throw 'Timed out waiting for the dev servers. Check .stack/web-error.log and .stack/moderator-error.log.'
 } catch {

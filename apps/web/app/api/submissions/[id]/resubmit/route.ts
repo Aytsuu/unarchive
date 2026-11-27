@@ -74,7 +74,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     const uploaded = await saveProjectDemos(files as File[])
     try {
-      const result = await resubmitSubmission(mongoClient, db, { previousId: id, id: identity.id, ownerId: session.user.id, submittedAt: new Date(), project, demos: [...retained.map((index) => oldDemos[index]), ...uploaded], idempotencyDigest: digest })
+      const result = await resubmitSubmission(mongoClient, db, { previousId: id, id: identity.id, ownerId: session.user.id, submittedAt: new Date(), project, demos: [...retained.map((index) => oldDemos[index]), ...uploaded], idempotencyDigest: digest }, { notify: process.env.NODE_ENV === "development" })
       if (!result.ok || result.replayed) await deleteProjectDemos(uploaded).catch(() => console.error("Revision image cleanup failed"))
       if (!result.ok) return failure("This submission has already changed. Reload to continue.", 409)
       return Response.json({ success: true, data: result }, { status: result.replayed ? 200 : 201, headers: { "Cache-Control": "no-store" } })

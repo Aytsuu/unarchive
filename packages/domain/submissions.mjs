@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb"
 
 export const SUBMISSIONS_COLLECTION = "projectSubmissions"
+export const PENDING_SUBMISSION_LIMIT = 100
 
 const DEMO_SUBMISSIONS = [
   {
@@ -86,14 +87,28 @@ async function ownerNames(db, ownerIds) {
   return new Map(users.map((user) => [String(user._id), user.name]))
 }
 
-export async function listPendingSubmissions(db) {
-  const records = await db.collection(SUBMISSIONS_COLLECTION)
+async function oldestPendingSubmissions(db) {
+  return db.collection(SUBMISSIONS_COLLECTION)
     .find(pendingSubmissionFilter(), { maxTimeMS: 3000 })
     .sort({ submittedAt: 1, _id: 1 })
-    .limit(100)
+    .limit(PENDING_SUBMISSION_LIMIT)
     .toArray()
-  const names = await ownerNames(db, [...new Set(records.map((record) => record.ownerId).filter(Boolean))])
+}
+
+async function namesForRecords(db, records) {
+  return ownerNames(db, [...new Set(records.map((record) => record.ownerId).filter(Boolean))])
+}
+
+export async function listPendingSubmissions(db) {
+  const records = await oldestPendingSubmissions(db)
+  const names = await namesForRecords(db, records)
   return records.map((record) => toQueueItem(record, names.get(record.ownerId)))
+}
+
+export async function listPendingReviewDetails(db) {
+  const records = await oldestPendingSubmissions(db)
+  const names = await namesForRecords(db, records)
+  return records.map((record) => reviewDetails(record, names.get(record.ownerId)))
 }
 
 function submissionObjectId(id) {
@@ -169,9 +184,40 @@ export function pendingSubmissionDocument(input) {
   }
 }
 
-export async function insertPendingSubmission(db, input) {
+export const PUBLISH_WEBHOOK_COLLECTION = "publishWebhookDeliveries"
+export const PUBLISH_WEBHOOK_EVENT_TYPE = "submission.created"
+
+export function publishWebhookDelivery(submissionId, occurredAt) {
+  const id = submissionId?.toString?.()
+  if (!id) throw new Error("A webhook needs a submission.")
+  if (!(occurredAt instanceof Date) || Number.isNaN(occurredAt.getTime())) throw new Error("A webhook needs a time.")
+  return {
+    eventId: id,
+    type: PUBLISH_WEBHOOK_EVENT_TYPE,
+    submissionId: id,
+    state: "pending",
+    attempts: 0,
+    nextAttemptAt: occurredAt,
+    occurredAt,
+  }
+}
+
+export async function insertPendingSubmission(db, input, client) {
   const document = pendingSubmissionDocument(input)
-  await db.collection(SUBMISSIONS_COLLECTION).insertOne(document)
+  if (!client) {
+    await db.collection(SUBMISSIONS_COLLECTION).insertOne(document)
+    return document
+  }
+  await db.collection(PUBLISH_WEBHOOK_COLLECTION).createIndex({ eventId: 1 }, { unique: true, name: "publish_webhook_event_id" })
+  const session = client.startSession()
+  try {
+    await session.withTransaction(async () => {
+      await db.collection(SUBMISSIONS_COLLECTION).insertOne(document, { session })
+      await db.collection(PUBLISH_WEBHOOK_COLLECTION).insertOne(publishWebhookDelivery(document._id, document.submittedAt), { session })
+    })
+  } finally {
+    await session.endSession()
+  }
   return document
 }
 
@@ -326,9 +372,11 @@ export async function decideSubmission(db, input, client) {
   } finally { await session.endSession() }
 }
 
-export async function resubmitSubmission(client, db, input) {
+export async function resubmitSubmission(client, db, input, options = {}) {
   const previousId = submissionObjectId(input?.previousId)
   if (!previousId || !(input?.id instanceof ObjectId) || typeof input.ownerId !== "string" || !input.ownerId.trim() || typeof input.idempotencyDigest !== "string" || !input.idempotencyDigest) return { ok: false, error: "not_found" }
+  const notify = options?.notify === true
+  if (notify) await db.collection(PUBLISH_WEBHOOK_COLLECTION).createIndex({ eventId: 1 }, { unique: true, name: "publish_webhook_event_id" })
   const session = client.startSession()
   try {
     return await session.withTransaction(async () => {
@@ -345,6 +393,7 @@ export async function resubmitSubmission(client, db, input) {
       const result = await submissions.updateOne({ _id: previousId, ownerId: input.ownerId, status: "changes_requested", resubmittedAs: { $exists: false } }, { $set: { resubmittedAt: input.submittedAt, resubmittedAs: input.id } }, { session })
       if (result.matchedCount !== 1) return { ok: false, error: "conflict" }
       await submissions.insertOne(document, { session })
+      if (notify) await db.collection(PUBLISH_WEBHOOK_COLLECTION).insertOne(publishWebhookDelivery(document._id, document.submittedAt), { session })
       return { ok: true, id: String(input.id), replayed: false }
     })
   } finally { await session.endSession() }

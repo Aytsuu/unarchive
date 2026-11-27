@@ -23,9 +23,9 @@ try {
         if ($killed.ContainsKey("$ProcessId")) { return }
         $alive = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
         if ($null -eq $alive) { return }
-        Write-Host "Stopping the $Label dev server..."
+        Write-Host "Stopping the $Label..."
         & taskkill.exe /PID $ProcessId /T /F | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "Failed to stop the $Label dev server." }
+        if ($LASTEXITCODE -ne 0) { throw "Failed to stop the $Label." }
         $killed["$ProcessId"] = $true
     }
 
@@ -37,7 +37,11 @@ try {
         foreach ($server in $recorded) {
             $alive = Get-Process -Id $server.pid -ErrorAction SilentlyContinue
             if ($null -ne $alive -and $alive.StartTime.ToUniversalTime().Ticks -eq [long]$server.startTicks) {
-                $label = if ($server.name) { [string]$server.name } else { 'web' }
+                $label = switch ($server.name) {
+                    'publish-webhook' { 'publication webhook worker' }
+                    'notifications' { 'notification worker' }
+                    default { if ($server.name) { "$($server.name) dev server" } else { 'web dev server' } }
+                }
                 Stop-DevPid -ProcessId ([int]$server.pid) -Label $label
             }
         }
@@ -45,7 +49,7 @@ try {
     }
 
     foreach ($server in @(Get-RunningStackServers)) {
-        $label = if ($server.Name) { [string]$server.Name } else { 'web' }
+        $label = if ($server.Name) { "$($server.Name) dev server" } else { 'web dev server' }
         Stop-DevPid -ProcessId ([int]$server.ProcessId) -Label $label
     }
     if ($killed.Count -eq 0) { Write-Host 'The web and moderator dev servers are not running.' }

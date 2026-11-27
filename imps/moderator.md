@@ -40,12 +40,37 @@ The current publishing flow creates a public project immediately, and edits upda
 - Keep app-specific production secrets and deployment settings separate. Securely configure any shared Better Auth secret and session settings required to validate the existing session in both deployments. Both deployments need appropriately scoped access to MongoDB and project storage. Configure DNS and HTTPS for each hostname when deploying.
 - Keep the existing legal-report administration functional during the split. Moving that workflow into the moderator app can follow separately.
 
+## Development moderation MCP
+
+The web app exposes a Streamable HTTP MCP endpoint at `/api/mcp` while `NODE_ENV` is `development`. On the default local port that is `http://localhost:3000/api/mcp`. The dev stack may bind another port in the 3000–3099 range; use that port with the same path. The endpoint is not authenticated and answers 404 outside development. Anyone who can reach the development server can call it, so run it only in a trusted environment.
+
+Every decision is recorded as `unarchive-moderation-bot`. That identity is fixed in the server. It is stored as the moderator on the submission and as the actor on the notification event. There is no bot account to provision.
+
+- `list_pending_submissions` returns the existing review details for the oldest pending submissions, at most 100. Each item includes the abstract, topics, contributors, links, and dates.
+- `get_pending_submission` returns those review details for one submission id, including a pending submission outside that 100-item queue.
+- `approve_submission` publishes one pending submission through the shared decision service, then invalidates the web app's project-list cache.
+- `request_submission_revision` asks for changes. The reason must be nonblank and at most 4,000 characters.
+
+Malformed ids, blank or oversized reasons, missing submissions, and submissions that already have a decision come back as tool errors. Publication and notification behavior matches a decision made in the moderator app.
+
+## Publication webhook
+
+A new publication submission or revision resubmission in development saves one delivery record in the same transaction as that snapshot. The event id is the new snapshot's submission id, so saving the same request again does not create another notification, and each resubmitted snapshot gets its own event. A failed transaction leaves neither the new snapshot nor a new delivery. A failed HTTP delivery does not undo the submission.
+
+`npm run stack` and `make stack run` start the publication webhook worker and `npm run notifications:work -- --watch` with the web and moderator servers. Those processes are named `publish-webhook` and `notifications` in `.stack/dev-process.json`. `npm run stop` and `make stack stop` stop both workers with the other tracked processes. The worker runs only when `NODE_ENV` is `development`. `npm run webhooks:publish` starts one delivery pass outside the stack. An unset `NODE_ENV` is treated as development; any other value exits without sending.
+
+Set `PUBLISH_WEBHOOK_URL` to an `https://` endpoint and `PUBLISH_WEBHOOK_SECRET` to the bearer secret in `.env.local`. The worker POSTs `{ "type": "submission.created", "submissionId": "<id>" }` with `Authorization: Bearer <secret>`. If either value is missing, or the URL is not HTTPS, due deliveries stay pending and are not sent. Delivery is at least once: the bot treats a repeated notification for the same submission id as the same event.
+
+Inspect status in the `publishWebhookDeliveries` collection. A record is `pending`, `leased`, `delivered`, or `dead`. Failed attempts keep `lastError` and retry with bounded backoff. After eight attempts the record is `dead`. The tunneled `/api/mcp` endpoint stays unauthenticated.
+
 ## Verification
 
 - Test submission, approval, requested changes, resubmission, and review of edits while the previous version remains public.
 - Verify the header button appears for permitted moderators and is absent for guests, ordinary users, and revoked moderators. Confirm the button opens the queue without a second login or landing page.
 - Verify direct moderator URLs, APIs, and pending media reject unauthenticated users, ordinary users, and revoked moderators. Confirm an unauthenticated page visit uses the existing web login and returns only to a validated destination, and that a permitted moderator can access the queue and operations with the existing session.
 - Test simultaneous decisions, retries, stale submissions, failures during promotion, and public cache refresh after approval.
+- Verify the development moderation MCP lists, looks up one submission, approves, and requests revisions through the shared decision service, and that `/api/mcp` is absent outside development.
+- Verify a new development submission and a revision resubmission each store one webhook delivery, a retry of the same snapshot does not add another, and the development worker can report pending, delivered, and dead delivery status.
 - Verify existing published projects, versions, direct links, and media remain accessible after migration. Run both app builds and relevant unit, integration, and end-to-end tests.
 
 ## Assumptions
